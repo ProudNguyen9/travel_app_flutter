@@ -15,8 +15,14 @@ dependencies:
   cupertino_icons: ^1.0.2
   animate_do: ^3.0.2
   shape_of_view_null_safe: ^2.0.0
-  google_fonts: ^4.0.1
+  google_fonts: ^6.3.2
   water_drop_nav_bar: ^2.2.0+5
+  flutter_svg: ^2.2.1
+  pin_code_fields: ^8.0.1
+  timer_count_down: ^2.2.2
+  supabase_flutter: ^2.10.2
+  provider: ^6.1.5+1
+  google_sign_in: ^7.2.0
 
 dev_dependencies:
   flutter_test:
@@ -29,6 +35,8 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/icons/
+   
 
   # fonts:
   #   - family: Schyler
