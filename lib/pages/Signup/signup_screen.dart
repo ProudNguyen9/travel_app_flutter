@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:travel_app/authenticaion/auth_provider.dart';
 import 'package:travel_app/pages/Login/login_screen.dart';
 
-import '../../widget/widget.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
