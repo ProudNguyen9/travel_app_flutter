@@ -107,7 +107,22 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(
+                  height: 10,
+                ),
+                const Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    "Forget Password?",
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      fontSize: 14, // tương đương 14.sp
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFFFF7029),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 30),
                 SizedBox(
                   width: double.infinity,
                   height: 56,
@@ -128,13 +143,73 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                const Text("Or connect with",
-                    style: TextStyle(color: Color(0xFF707B81))),
-                const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SocialIcon(path: "assets/icons/facebook.svg", ontap: () {}),
+                    const Text(
+                      "Don't have an account? ",
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF6C757D),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        // chuyển sang màn hình Sign up
+                        Navigator.pushNamed(context, '/signup');
+                      },
+                      child: const Text(
+                        "Sign up",
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFFF7029),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(
+                  height: 20,
+                ),
+                const Text("Or connect with",
+                    style: TextStyle(color: Color(0xFF707B81))),
+                const SizedBox(height: 110),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SocialIcon(
+                      path: "assets/icons/facebook.svg",
+                      ontap: () async {
+                        try {
+                          await Supabase.instance.client.auth.signInWithOAuth(
+                            OAuthProvider.facebook,
+                            redirectTo: 'travelapp://login-callback',
+                            authScreenLaunchMode:
+                                LaunchMode.externalApplication,
+                          );
+
+                          //  get secsion
+                          final session =
+                              Supabase.instance.client.auth.currentSession;
+
+                          if (session != null) {
+                            //  go to page welcaom
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const WelcomePage()),
+                            );
+                          }
+                        } catch (e) {
+                          debugPrint("Facebook login error: $e");
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                                content: Text("Lỗi đăng nhập Facebook: $e")),
+                          );
+                        }
+                      },
+                    ),
                     const SizedBox(width: 20),
                     SocialIcon(
                         path: "assets/icons/google.svg",
@@ -159,8 +234,37 @@ class _LoginScreenState extends State<LoginScreen> {
                         }),
                     const SizedBox(width: 20),
                     SocialIcon(
-                      path: "assets/icons/twitter.svg",
-                      ontap: () {},
+                      path: "assets/icons/X.svg",
+                      ontap: () async {
+                        try {
+                          await Supabase.instance.client.auth.signInWithOAuth(
+                            OAuthProvider.twitter,
+                            redirectTo:
+                                'travelapp://login-callback', 
+                            authScreenLaunchMode:
+                                LaunchMode.externalApplication,
+                          );
+
+                          // Lấy session
+                          final session =
+                              Supabase.instance.client.auth.currentSession;
+
+                          if (session != null) {
+                            // Điều hướng sang màn hình Welcome
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const WelcomePage()),
+                            );
+                          }
+                        } catch (e) {
+                          debugPrint("Twitter login error: $e");
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                                content: Text("Lỗi đăng nhập Twitter: $e")),
+                          );
+                        }
+                      },
                     ),
                   ],
                 ),
