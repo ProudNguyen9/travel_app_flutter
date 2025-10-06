@@ -32,12 +32,12 @@ List<TabBarModel> inspiration = [
   TabBarModel(
       title: "Unguja",
       location: "Island in Tanzania",
-      image: "assets/images/download.jpeg",
+      image: "assets/images/607d0368488549e7b9179724b0db4940.jpg",
       price: 543),
   TabBarModel(
       title: "Baja Peninsula",
       location: "Mexico",
-      image: "assets/images/images.jpeg",
+      image: "assets/images/607d0368488549e7b9179724b0db4940.jpg",
       price: 238),
   TabBarModel(
       title: "Sossusvlei",

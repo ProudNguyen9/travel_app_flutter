@@ -12,22 +12,23 @@ class MiddleAppText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-     var size = MediaQuery.of(context).size;
+    var size = MediaQuery.of(context).size;
     return Padding(
       padding: EdgeInsets.only(top: size.height * 0.015),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children:   [
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
           AppText(
             text: text,
             size: 19,
             color: Colors.black,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w600,
           ),
           const AppText(
             text: "See All",
             size: 14,
-            color: Colors.deepPurpleAccent,
+            color: Colors.black,
             fontWeight: FontWeight.w500,
           ),
         ],

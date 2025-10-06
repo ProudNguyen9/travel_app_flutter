@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:travel_app/authenticaion/auth_provider.dart';
+import 'package:travel_app/pages/home_page.dart';
 
-import 'pages/screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,7 +32,7 @@ class MyApp extends StatelessWidget {
     return const MaterialApp(
       title: 'Flutter Travel App',
       debugShowCheckedModeBanner: false,
-      home: LoginScreen(),
+      home: HomePage(),
     );
   }
 }
