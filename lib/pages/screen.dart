@@ -4,3 +4,4 @@ export 'Login/otp_verification_screen.dart';
 export 'Signup/signup_screen.dart';
 export 'itinerary_map_screen.dart';
 export 'shedule_screen.dart';
+export 'finish_action_noctice.dart';
