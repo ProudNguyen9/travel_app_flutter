@@ -5,7 +5,6 @@ import 'package:flutter_svg/svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:travel_app/utils/extensions.dart';
 
 import '../models/people_also_like_model.dart';
 import '../pages/details_page.dart';

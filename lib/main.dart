@@ -3,11 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:travel_app/authenticaion/auth_provider.dart';
-import 'package:travel_app/pages/home_page.dart';
+import 'package:travel_app/pages/screen.dart';
+// ignore: depend_on_referenced_packages
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+
   await Supabase.initialize(
     url: 'https://yszeuemcqrydkfbhvdhj.supabase.co',
     anonKey:
@@ -32,7 +34,7 @@ class MyApp extends StatelessWidget {
     return const MaterialApp(
       title: 'Flutter Travel App',
       debugShowCheckedModeBanner: false,
-      home: HomePage(),
+      home: MyMapPage(),
     );
   }
 }
