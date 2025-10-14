@@ -34,7 +34,7 @@ class MyApp extends StatelessWidget {
     return const MaterialApp(
       title: 'Flutter Travel App',
       debugShowCheckedModeBanner: false,
-      home: MyMapPage(),
+      home: SheduleScreen(),
     );
   }
 }
