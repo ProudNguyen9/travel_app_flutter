@@ -34,7 +34,7 @@ class FinishActionNoticeScreen extends StatelessWidget {
             Image.asset('assets/icons/success.png'),
             Text(
               "A confirmation email has been sent to\nabisolasherif23@gmail.com",
-              textAlign: TextAlign.center, // 👈 nằm ngoài style
+              textAlign: TextAlign.center, 
               style: GoogleFonts.lato(
                 fontSize: 14,
                 fontWeight: FontWeight.w400,

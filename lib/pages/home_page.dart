@@ -5,9 +5,9 @@ import 'package:flutter_svg/svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:travel_app/pages/detail_screen.dart';
 
 import '../models/people_also_like_model.dart';
-import '../pages/details_page.dart';
 import '../widget/reuseable_text.dart';
 import '../models/tab_bar_model.dart';
 import '../widget/painter.dart';
@@ -197,109 +197,111 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           width: size.width * 0.9,
                           height: 160,
                           decoration: BoxDecoration(
-                              color: const Color.fromARGB(224, 80, 237, 251),
-                              borderRadius: BorderRadius.circular(21),
-                              border: BoxBorder.all(
-                                  width: 1, color: const Color(0xFF24BAEC))),
+                            borderRadius: BorderRadius.circular(22),
+                            gradient: const LinearGradient(
+                              colors: [
+                                Color(0xFF5EFCE8), // xanh ngọc nhạt
+                                Color(0xFF736EFE), // tím nhạt
+                                Color(0xFFFFC371), // cam pastel
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.blueAccent.withOpacity(0.2),
+                                blurRadius: 10,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
                           child: Stack(
+                            clipBehavior: Clip.none,
                             children: [
+                              // hiệu ứng mờ glassy
+                              Positioned.fill(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(22),
+                                    color: Colors.white.withOpacity(0.1),
+                                  ),
+                                ),
+                              ),
+
+                              // vòng tròn mờ ở nền
                               Positioned(
-                                left: 20,
-                                top: 25,
+                                right: -40,
+                                top: -30,
+                                child: Container(
+                                  width: 160,
+                                  height: 160,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white.withOpacity(0.2),
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                right: -20,
+                                bottom: -50,
+                                child: Container(
+                                  width: 180,
+                                  height: 180,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white.withOpacity(0.1),
+                                  ),
+                                ),
+                              ),
+
+                              // nội dung text
+                              Positioned(
+                                left: 22,
+                                top: 30,
                                 child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       'Get Discount\nup to',
                                       style: GoogleFonts.lato(
-                                          fontSize: 18,
-                                          fontStyle: FontStyle.italic,
-                                          fontWeight: FontWeight.w700,
-                                          color: const Color(0xFFFFFFFF)),
+                                        fontSize: 20,
+                                        fontStyle: FontStyle.italic,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
                                     ),
-                                    Text(
-                                      '90 %',
-                                      style: GoogleFonts.lato(
-                                          fontSize: 48,
+                                    ShaderMask(
+                                      shaderCallback: (bounds) =>
+                                          const LinearGradient(
+                                        colors: [
+                                          Color(0xFFFFE985),
+                                          Color(0xFFFA709A),
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ).createShader(bounds),
+                                      child: Text(
+                                        '90%',
+                                        style: GoogleFonts.lato(
+                                          fontSize: 50,
                                           fontStyle: FontStyle.italic,
-                                          fontWeight: FontWeight.w700,
-                                          color: const Color(0xFFFFFFFF)),
-                                    )
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
-                              FadeInUp(
-                                delay: const Duration(milliseconds: 600),
-                                child: Container(
-                                  width: size.width * 0.9,
-                                  height: 160,
-                                  decoration: BoxDecoration(
-                                      color: const Color.fromARGB(
-                                          224, 80, 237, 251),
-                                      borderRadius: BorderRadius.circular(21),
-                                      border: BoxBorder.all(
-                                          width: 1,
-                                          color: const Color(0xFF24BAEC))),
-                                  child: Stack(
-                                    children: [
-                                      Positioned(
-                                        left: 20,
-                                        top: 25,
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Get Discount\nup to',
-                                              style: GoogleFonts.lato(
-                                                  fontSize: 18,
-                                                  fontStyle: FontStyle.italic,
-                                                  fontWeight: FontWeight.w900,
-                                                  color:
-                                                      const Color(0xFFFFFFFF)),
-                                            ),
-                                            Text(
-                                              '80%',
-                                              style: GoogleFonts.lato(
-                                                  fontSize: 48,
-                                                  fontStyle: FontStyle.italic,
-                                                  fontWeight: FontWeight.w900,
-                                                  color:
-                                                      const Color(0xFFFFFFFF)),
-                                            )
-                                          ],
-                                        ),
-                                      ),
-                                      Positioned(
-                                          right: -6,
-                                          bottom: -50,
-                                          child: Container(
-                                            height: 200,
-                                            width: 200,
-                                            decoration: const BoxDecoration(
-                                                color: Color(0xFFF4E4DE),
-                                                shape: BoxShape.circle),
-                                          )),
-                                      Positioned(
-                                          right: -2,
-                                          bottom: -50,
-                                          child: Container(
-                                            height: 180,
-                                            width: 180,
-                                            decoration: const BoxDecoration(
-                                                color: Color(0xFF3999B2),
-                                                shape: BoxShape.circle),
-                                          )),
-                                      Positioned(
-                                        right: 2,
-                                        bottom: -8,
-                                        child: Image.asset(
-                                          'assets/images/discount.png',
-                                          width: 170,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+
+                              // hình minh họa
+                              Positioned(
+                                right: 0,
+                                bottom: -5,
+                                child: Image.asset(
+                                  'assets/images/discount.png',
+                                  width: 160,
+                                  fit: BoxFit.cover,
                                 ),
                               ),
                             ],

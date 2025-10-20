@@ -5,3 +5,6 @@ export 'Signup/signup_screen.dart';
 export 'itinerary_map_screen.dart';
 export 'shedule_screen.dart';
 export 'finish_action_noctice.dart';
+export 'choose_method_screen.dart';
+export 'more_detail_screen.dart';
+export 'detail_screen.dart';
