@@ -8,3 +8,5 @@ export 'finish_action_noctice.dart';
 export 'choose_method_screen.dart';
 export 'more_detail_screen.dart';
 export 'detail_screen.dart';
+export 'Login/forgotpassword.dart';
+export 'Login/reset_password_screen.dart';

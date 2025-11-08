@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:shape_of_view_null_safe/shape_of_view_null_safe.dart';
 import 'package:travel_app/nav_pages.dart/main_wrapper.dart';
+import 'package:travel_app/pages/home_screen.dart';
 
 import '../models/welcome_model.dart';
 import '../widget/reuseable_text.dart';
@@ -115,7 +116,7 @@ class _WelcomePageState extends State<WelcomePage> {
                                           context,
                                           MaterialPageRoute(
                                             builder: (context) =>
-                                                const MainWrapper(),
+                                                const HomeScreen(),
                                           ),
                                         );
                                       },

@@ -14,14 +14,14 @@ import '../widget/painter.dart';
 import '../widget/reuseabale_middle_app_text.dart';
 import '../widget/widget.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late final TabController tabController;
   final EdgeInsetsGeometry padding =
       const EdgeInsets.symmetric(horizontal: 10.0);

@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:travel_app/authenticaion/auth_provider.dart';
 import 'package:travel_app/pages/Login/login_screen.dart';
+import 'package:travel_app/widget/icon.dart';
 
+import '../welcome_page.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -12,6 +17,7 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
+  
   final nameCtrl = TextEditingController();
   final emailCtrl = TextEditingController();
   final passCtrl = TextEditingController();
@@ -27,12 +33,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
       final res = await Supabase.instance.client.auth.signUp(
         email: emailCtrl.text.trim(),
         password: passCtrl.text.trim(),
+        emailRedirectTo: 'travelapp://login-callback',
         data: {
           'full_name': nameCtrl.text.trim(),
         },
       );
 
       if (res.user != null) {
+        // ignore: use_build_context_synchronously
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -42,6 +50,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         );
       }
     } on AuthException catch (e) {
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Lỗi: ${e.message}"),
@@ -49,6 +58,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
       );
     } catch (e) {
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Có lỗi xảy ra: $e"),
@@ -69,24 +79,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: SingleChildScrollView(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 80),
+                const SizedBox(height: 50),
 
                 // Title
-                Text(
-                  "Sign up now",
-                  style: GoogleFonts.roboto(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w500,
+                Center(
+                  child: Text(
+                    "Đăng ký ngày ",
+                    style: GoogleFonts.poppins(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  "Please fill the details and create account",
-                  style: TextStyle(
+                Text(
+                  "Vui lòng điền thông tin và tạo tài khoản.",
+                  style: GoogleFonts.poppins(
                     fontSize: 16,
-                    color: Color(0xFF7D848D),
+                    color: const Color(0xFF7D848D),
                   ),
                 ),
 
@@ -96,7 +108,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 TextField(
                   controller: nameCtrl,
                   decoration: InputDecoration(
-                    hintText: "Full Name",
+                    hintText: "Họ và tên ",
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(24),
                       borderSide: BorderSide.none,
@@ -130,7 +142,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   controller: passCtrl,
                   obscureText: obscureText,
                   decoration: InputDecoration(
-                    hintText: "Password",
+                    hintText: "Mật khẩu",
                     suffixIcon: IconButton(
                       icon: Icon(obscureText
                           ? Icons.visibility_off
@@ -150,11 +162,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text(
-                  "Password must be 8 characters",
-                  style: TextStyle(
+                Text(
+                  "  Mật khẩu phải bao gồm đủ 8 kí tự",
+                  style: GoogleFonts.poppins(
                     fontSize: 12,
-                    color: Color(0xFF7D848D),
+                    color: const Color(0xFF7D848D),
                   ),
                 ),
 
@@ -168,7 +180,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF24BAEC),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: BorderRadius.circular(34),
                       ),
                     ),
                     onPressed: loading ? null : _signUp,
@@ -176,9 +188,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ? const CircularProgressIndicator(
                             color: Colors.white,
                           )
-                        : const Text(
-                            "Sign Up",
-                            style: TextStyle(fontSize: 16, color: Colors.white),
+                        : Text(
+                            "Đăng ký",
+                            style: GoogleFonts.poppins(
+                                fontSize: 16, color: Colors.white),
                           ),
                   ),
                 ),
@@ -190,7 +203,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Text(
-                      "Already have an account? ",
+                      "Đã có tài khoản ? ",
                       style: TextStyle(color: Color(0xFF707B81)),
                     ),
                     GestureDetector(
@@ -201,10 +214,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               builder: (context) => const LoginScreen()),
                         );
                       },
-                      child: const Text(
-                        "Sign in",
-                        style: TextStyle(
-                          color: Color(0xFFFF7029),
+                      child: Text(
+                        "Đăng nhập",
+                        style: GoogleFonts.poppins(
+                          color: const Color(0xFFFF7029),
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -212,25 +225,124 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ],
                 ),
 
-                const SizedBox(height: 20),
-                const Text(
-                  "Or connect",
-                  style: TextStyle(color: (Color(0xFF707B81))),
+                const SizedBox(height: 10),
+                Center(
+                  child: Text(
+                    "Hoặc kết nối với",
+                    style:
+                        GoogleFonts.poppins(color: (const Color(0xFF707B81))),
+                  ),
                 ),
 
-                const SizedBox(height: 20),
+                const Gap(5),
+                Center(
+                  child: Image.asset(
+                    "assets/images/imgsign.png",
+                    width: 150,
+                    height: 150,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                const Gap(5),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SocialIcon(
+                      path: "assets/icons/facebook.svg",
+                      ontap: () async {
+                        try {
+                          await Supabase.instance.client.auth.signInWithOAuth(
+                            OAuthProvider.facebook,
+                            redirectTo: 'travelapp://login-callback',
+                            authScreenLaunchMode:
+                                LaunchMode.externalApplication,
+                          );
 
-                // Social icons
-                // Row(
-                //   mainAxisAlignment: MainAxisAlignment.center,
-                //   children: [
-                //     SocialIcon(path: "assets/icons/facebook.svg", ontap: (){}),
-                //     const SizedBox(width: 20),
-                //     SocialIcon(path: "assets/icons/google.svg", ontap: context.read<AuthProvider>().signInWithGoogle,),
-                //     const SizedBox(width: 20),
-                //     SocialIcon(path: "assets/icons/twitter.svg", ontap: () {  },),
-                //   ],
-                // ),
+                          //  get secsion
+                          final session =
+                              Supabase.instance.client.auth.currentSession;
+
+                          if (session != null) {
+                            //  go to page welcaom
+                            Navigator.pushReplacement(
+                              // ignore: use_build_context_synchronously
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const WelcomePage()),
+                            );
+                          }
+                        } catch (e) {
+                          debugPrint("Facebook login error: $e");
+                          // ignore: use_build_context_synchronously
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                                content: Text("Lỗi đăng nhập Facebook: $e")),
+                          );
+                        }
+                      },
+                    ),
+                    const SizedBox(width: 10),
+                    SocialIcon(
+                        path: "assets/icons/google.svg",
+                        ontap: () async {
+                          await context.read<AuthProvider>().googleSignIn();
+
+                          // Nếu muốn kiểm tra login thành công
+                          final session =
+                              Supabase.instance.client.auth.currentSession;
+                          if (session != null) {
+                            // Chuyển sang trang khác
+                            Navigator.push(
+
+                                // ignore: use_build_context_synchronously
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => const WelcomePage()));
+                          } else {
+                            // ignore: use_build_context_synchronously
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text('Đăng nhập thất bại')),
+                            );
+                          }
+                        }),
+                    const SizedBox(width: 10),
+                    SocialIcon(
+                      path: "assets/icons/X.svg",
+                      ontap: () async {
+                        try {
+                          await Supabase.instance.client.auth.signInWithOAuth(
+                            OAuthProvider.twitter,
+                            redirectTo: 'travelapp://login-callback',
+                            authScreenLaunchMode:
+                                LaunchMode.externalApplication,
+                          );
+
+                          // Lấy session
+                          final session =
+                              Supabase.instance.client.auth.currentSession;
+
+                          if (session != null) {
+                            // Điều hướng sang màn hình Welcome
+                            Navigator.pushReplacement(
+                              // ignore: use_build_context_synchronously
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const WelcomePage()),
+                            );
+                          }
+                        } catch (e) {
+                          debugPrint("Twitter login error: $e");
+                          // ignore: use_build_context_synchronously
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                                content: Text("Lỗi đăng nhập Twitter: $e")),
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
               ],
             ),
           ),

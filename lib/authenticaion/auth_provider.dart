@@ -8,7 +8,8 @@ class AuthProvider extends ChangeNotifier {
   Session? _session;
   User? get user => _session?.user;
   bool get isLoggedIn => user != null;
-
+  bool _isLoading = false;
+  bool get isLoading => _isLoading;
   AuthProvider() {
     // lắng nghe thay đổi session
     supabase.auth.onAuthStateChange.listen((event) {
@@ -63,5 +64,71 @@ class AuthProvider extends ChangeNotifier {
       idToken: idToken,
       accessToken: authorization.accessToken,
     );
+  }
+
+  // 1) Gửi link đến email
+  Future<String?> sendForgotPasswordEmail(String email) async {
+  try {
+    await Supabase.instance.client.auth.resetPasswordForEmail(
+      email,
+      redirectTo:'travelapp://login-callback', // dùng chung callback xác thực
+    );
+    return null; // null = không lỗi
+  } on AuthException catch (e) {
+    return e.message;
+  } catch (e) {
+    return e.toString();
+  }
+}
+
+
+  // 2) Xác thực OTP (user nhập code)
+  Future<String?> verifyOtpCode(String email, String otpCode) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      await supabase.auth.verifyOTP(
+        type: OtpType.email,
+        email: email,
+        token: otpCode,
+      );
+
+      _isLoading = false;
+      notifyListeners();
+      return null; // OTP đúng
+    } on AuthException catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return e.message; // OTP sai / hết hạn
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return "Mã OTP không hợp lệ.";
+    }
+  }
+
+  // 3) Đặt mật khẩu mới (chỉ gọi sau verify OTP)
+  Future<String?> resetPassword(String newPassword) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      await supabase.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+
+      _isLoading = false;
+      notifyListeners();
+      return null; // Thành công
+    } on AuthException catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return e.message;
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return "Không thể đặt lại mật khẩu.";
+    }
   }
 }

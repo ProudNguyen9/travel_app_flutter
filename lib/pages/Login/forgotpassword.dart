@@ -9,47 +9,44 @@ import 'package:travel_app/pages/welcome_page.dart';
 import '../../widget/widget.dart';
 import '../screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class ForgotpasswordScreen extends StatefulWidget {
+  const ForgotpasswordScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<ForgotpasswordScreen> createState() => _ForgotpasswordScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _ForgotpasswordScreenState extends State<ForgotpasswordScreen> {
   final emailCtrl = TextEditingController();
-  final passCtrl = TextEditingController();
   bool obscureText = true;
   bool loading = false;
 
   final supabase = Supabase.instance.client;
-
-  // Email login
-  Future<void> _signInWithEmail() async {
+  // Email forgot
+  Future<void> _SendEmailForgot() async {
     setState(() => loading = true);
-    try {
-      final res = await supabase.auth.signInWithPassword(
-        email: emailCtrl.text.trim(),
-        password: passCtrl.text.trim(),
-      );
 
-      if (res.user != null && mounted) {
+    try {
+      final auth = context.read<AuthProvider>();
+      final msg = await auth.sendForgotPasswordEmail(emailCtrl.text.trim());
+
+      if (msg == null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Đăng nhập thành công!"),
+            content: Text(
+              "✅ Đã gửi email đặt lại mật khẩu! Hãy kiểm tra hộp thư của bạn.",
+            ),
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const WelcomePage()),
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Lỗi: $msg"),
+            backgroundColor: Colors.red,
+          ),
         );
       }
-    } on AuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text("Lỗi: ${e.message}"), backgroundColor: Colors.red),
-      );
     } finally {
       setState(() => loading = false);
     }
@@ -67,43 +64,22 @@ class _LoginScreenState extends State<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 50),
-                Text("Đăng nhập ngay ",
+                Text("Quên mật khẩu",
                     style: GoogleFonts.poppins(
                         fontSize: 24, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 8),
                 Center(
                   child: Text(
-                    "Vui lòng đăng nhập để sử dụng ứng dụng.",
+                    "Hãy nhập địa chỉ email của bạn để đặt lại mật khẩu.",
                     style: GoogleFonts.poppins(
                         fontSize: 16, color: const Color(0xFF7D848D)),
                   ),
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 40),
                 TextField(
                   controller: emailCtrl,
                   decoration: InputDecoration(
-                    hintText: "Email",
-                    filled: true,
-                    fillColor: const Color(0xFFF7F7F9),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: passCtrl,
-                  obscureText: obscureText,
-                  decoration: InputDecoration(
-                    hintText: "Mật khẩu",
-                    suffixIcon: IconButton(
-                      icon: Icon(obscureText
-                          ? Icons.visibility_off
-                          : Icons.visibility),
-                      onPressed: () =>
-                          setState(() => obscureText = !obscureText),
-                    ),
+                    hintText: "Nhập Email của bạn ....",
                     filled: true,
                     fillColor: const Color(0xFFF7F7F9),
                     border: OutlineInputBorder(
@@ -113,93 +89,72 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(
-                  height: 10,
+                  height: 30,
                 ),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) =>
-                                  const ForgotpasswordScreen()));
-                    },
-                    child: Text(
-                      "Quên mật khẩu ?",
-                      textAlign: TextAlign.right,
-                      style: GoogleFonts.poppins(
-                        fontSize: 14, // tương đương 14.sp
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFFFF7029),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: loading ? null : _signInWithEmail,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF24BAEC),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(34),
-                      ),
-                    ),
-                    child: loading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text(
-                            "Đăng nhập",
-                            style: TextStyle(fontSize: 16, color: Colors.white),
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 24),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      "Chưa có tài khoản? ",
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        color: const Color(0xFF6C757D),
+                    // Nút BACK dạng viền
+                    Expanded(
+                      flex: 2,
+                      child: SizedBox(
+                        height: 56,
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(
+                                color: Color(0xFF24BAEC), width: 2),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(34),
+                            ),
+                          ),
+                          child: const Text(
+                            "Quay lại",
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Color(0xFF24BAEC),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const SignUpScreen()));
-                      },
-                      child: Text(
-                        "Đăng ký",
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFFFF7029),
+
+                    const SizedBox(width: 12),
+
+                    // Nút QUÊN MẬT KHẨU (giữ nguyên)
+                    Expanded(
+                      flex: 3,
+                      child: SizedBox(
+                        height: 56,
+                        child: ElevatedButton(
+                          onPressed: loading ? null : _SendEmailForgot,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF24BAEC),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(34),
+                            ),
+                          ),
+                          child: loading
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white)
+                              : const Text(
+                                  "Quên mật khẩu",
+                                  style: TextStyle(
+                                      fontSize: 16, color: Colors.white),
+                                ),
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(
-                  height: 10,
-                ),
-                Text(
-                  "Hoặc kết nối với",
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: const Color(0xFF6C757D),
-                  ),
-                ),
+                const SizedBox(height: 24),
                 const Gap(10),
                 Image.asset(
-                  "assets/images/imglogin.png",
-                  width: 150,
-                  height: 150,
+                  "assets/images/imgforgot.png",
+                  width: 250,
+                  height: 300,
+                  fit: BoxFit.contain,
                 ),
                 const Gap(10),
                 Row(
