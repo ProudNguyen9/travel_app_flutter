@@ -18,7 +18,7 @@ class AppText extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: GoogleFonts.ubuntu(
+      style: GoogleFonts.poppins(
         fontSize: size,
         color: color,
         fontWeight: fontWeight,

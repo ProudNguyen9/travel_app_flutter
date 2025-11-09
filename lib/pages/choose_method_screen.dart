@@ -12,54 +12,7 @@ class ChooseMethodPayScreen extends StatefulWidget {
 }
 
 class _ChooseMethodPayScreenState extends State<ChooseMethodPayScreen> {
-  String selected = 'online';
-
-  Widget buildOption(String value, String label) {
-    final isSelected = selected == value;
-    return InkWell(
-      onTap: () => setState(() => selected = value),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Row(
-          children: [
-            Container(
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: const Color(0xFF1E90FF),
-                  width: 2,
-                ),
-              ),
-              child: isSelected
-                  ? Center(
-                      child: Container(
-                        width: 12,
-                        height: 12,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF1E90FF),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 12),
-            Text(
-              label,
-              style: GoogleFonts.poppins(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
+  String? selected;
   InputDecoration inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
@@ -76,7 +29,20 @@ class _ChooseMethodPayScreenState extends State<ChooseMethodPayScreen> {
 
   @override
   Widget build(BuildContext context) {
+    const primary = Color(0xFF24BAEC);
     return Scaffold(
+      appBar: AppBar(
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon:
+              const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text('Chọn Phương Thức Thanh Toán',
+            style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.w600)),
+      ),
       backgroundColor: const Color(0xFFF5F6FA),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -84,70 +50,106 @@ class _ChooseMethodPayScreenState extends State<ChooseMethodPayScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 🔹 Header
+              // 🔹 Payment Method
+              Text(
+                "Chọn phương loại thanh toán online",
+                style: GoogleFonts.lato(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF151111),
+                ),
+              ),
+              const Gap(15),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  IconButton(
-                    style: ButtonStyle(
-                      backgroundColor: WidgetStateProperty.all(
-                        const Color(0xFFF1F1F3),
+                  // ==== MOMO ====
+                  GestureDetector(
+                    onTap: () {
+                      setState(() => selected = "momo");
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOut,
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(21),
+                        border: Border.all(
+                          color:
+                              selected == "momo" ? primary : Colors.transparent,
+                          width: 1.8,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.06),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(21),
+                        child: Image.asset(
+                          'assets/images/momo.png',
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
-                    onPressed: () => Navigator.pop(context),
-                    icon: SvgPicture.asset(
-                      'assets/icons/Arrow.svg',
-                      width: 22,
-                      height: 22,
-                    ),
                   ),
-                  Text(
-                    'Make Payment',
-                    style: GoogleFonts.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1B1E28),
-                    ),
-                  ),
-                  IconButton(
-                    style: ButtonStyle(
-                      backgroundColor: WidgetStateProperty.all(
-                        const Color(0xFFF1F1F3),
+
+                  const Gap(20),
+
+                  // ==== VNPAY ====
+                  GestureDetector(
+                    onTap: () {
+                      setState(() => selected = "vnpay");
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOut,
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(21),
+                        border: Border.all(
+                          color: selected == "vnpay"
+                              ? primary
+                              : Colors.transparent,
+                          width: 1.8,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.06),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                    ),
-                    onPressed: () {},
-                    icon: SvgPicture.asset(
-                      'assets/icons/Notifications.svg',
-                      width: 22,
-                      height: 22,
+                      clipBehavior: Clip.antiAlias,
+                      child: Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Image.asset(
+                          'assets/images/vnpay.png',
+                          fit: BoxFit.contain,
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
 
-              const Gap(30),
-
-              // 🔹 Payment Method
-              Text(
-                "Select Payment Method",
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF151111),
-                ),
-              ),
-              const Gap(15),
-              buildOption('online', 'Online Payment'),
-              buildOption('direct', 'Direct Transfer'),
-
               const Gap(25),
 
               // 🔹 Select Card
               Text(
-                "Select Card",
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
+                "Chọn loại thẻ",
+                style: GoogleFonts.lato(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w500,
                   color: const Color(0xFF151111),
                 ),
               ),
@@ -222,19 +224,19 @@ class _ChooseMethodPayScreenState extends State<ChooseMethodPayScreen> {
                   height: 52,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1E90FF),
+                      backgroundColor: const Color(0xFF24BAEC),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(21),
+                        borderRadius: BorderRadius.circular(34),
                       ),
                       elevation: 3,
                     ),
                     onPressed: () {},
                     child: Text(
-                      'Continue',
-                      style: GoogleFonts.poppins(
+                      'Tiếp tục',
+                      style: GoogleFonts.lato(
                         color: Colors.white,
                         fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),

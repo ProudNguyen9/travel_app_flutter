@@ -5,16 +5,16 @@ import 'package:google_fonts/google_fonts.dart';
 class LocationCard extends StatelessWidget {
   final String imagePath;
   final String title;
-  final String distance;
-  final String day; // 🗓️ ví dụ: "Day 1"
+  final String day; // ví dụ: "Ngày 1"
+  final String date; // ví dụ: "06/11/2025"
   final VoidCallback? onTap;
 
   const LocationCard({
     super.key,
     required this.imagePath,
     required this.title,
-    required this.distance,
     required this.day,
+    required this.date,
     this.onTap,
   });
 
@@ -26,8 +26,8 @@ class LocationCard extends StatelessWidget {
         filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
         child: Container(
           padding: const EdgeInsets.all(10),
-          width: 230,
-          height: 100,
+          width: 240,
+          height: 118,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [
@@ -54,8 +54,8 @@ class LocationCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 child: Image.asset(
                   imagePath,
-                  width: 70,
-                  height: 73,
+                  width: 89,
+                  height: 94,
                   fit: BoxFit.cover,
                 ),
               ),
@@ -64,28 +64,27 @@ class LocationCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          day,
-                          style: GoogleFonts.poppins(
-                            color: Colors.black87,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Icon(Icons.wb_sunny_rounded,
-                            color: Colors.orange, size: 16),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.cloud_rounded,
-                            color: Colors.blueAccent, size: 16),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.nightlight_round,
-                            color: Colors.deepPurple, size: 16),
-                      ],
+                    // Ngày + Ngày/Tháng/Năm
+                    Text(
+                      day,
+                      style: GoogleFonts.lato(
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
+                    Text(
+                      date,
+                      style: GoogleFonts.lato(
+                        color: Colors.grey[700],
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+
+                    // Tên địa điểm
                     Text(
                       title,
                       style: GoogleFonts.poppins(
@@ -95,16 +94,11 @@ class LocationCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
+
+                    // Khoảng cách + nút chi tiết
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          distance,
-                          style: TextStyle(
-                            color: Colors.grey[700],
-                            fontSize: 12,
-                          ),
-                        ),
                         GestureDetector(
                           onTap: onTap,
                           child: Container(
@@ -115,7 +109,7 @@ class LocationCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
-                              'Detail',
+                              'Chi tiết',
                               style: GoogleFonts.poppins(
                                 color: Colors.white,
                                 fontSize: 11,

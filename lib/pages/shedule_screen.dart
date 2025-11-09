@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:easy_date_timeline/easy_date_timeline.dart';
+import 'package:table_calendar/table_calendar.dart';
 import 'package:travel_app/widget/reuseabale_middle_app_text.dart';
 
 class SheduleScreen extends StatefulWidget {
@@ -13,65 +13,69 @@ class SheduleScreen extends StatefulWidget {
 }
 
 class _ScheduleScreenState extends State<SheduleScreen> {
+  // Ngày đang dùng ở chỗ khác trong file
   DateTime _focusDate = DateTime.now();
+
+  // State cho TableCalendar
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
+
+  /// ✅ Danh sách ngày cần highlight (dot cam)
+  final List<DateTime> _highlightDates = [
+    DateTime(2025, 11, 6),
+    DateTime(2025, 11, 8),
+    DateTime(2025, 11, 10),
+  ];
+
+  /// Map sự kiện để TableCalendar render markers (dot)
+  late final Map<DateTime, List<String>> _eventMap;
+
+  DateTime _onlyDate(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  @override
+  void initState() {
+    super.initState();
+    _focusedDay = _focusDate;
+    _selectedDay = _onlyDate(_focusDate);
+
+    // Chuẩn hóa highlight -> event map
+    _eventMap = {
+      for (final d in _highlightDates.map(_onlyDate)) d: ['event'],
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon:
+              const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Lịch trình',
+          style: GoogleFonts.lato(
+            fontSize: 18,
+            height: 26 / 18,
+            color: Colors.black,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
             children: [
               const Gap(10),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    IconButton(
-                      style: ButtonStyle(
-                        backgroundColor: WidgetStateProperty.all(
-                          const Color(0xFFF7F7F9),
-                        ),
-                      ),
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      icon: SvgPicture.asset(
-                        'assets/icons/Arrow.svg',
-                        width: 22,
-                        height: 22,
-                      ),
-                    ),
-                    Text(
-                      'Schedule',
-                      style: GoogleFonts.poppins(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF1B1E28),
-                      ),
-                    ),
-                    IconButton(
-                      style: ButtonStyle(
-                        backgroundColor: WidgetStateProperty.all(
-                          const Color(0xFFF7F7F9),
-                        ),
-                      ),
-                      onPressed: () {},
-                      icon: SvgPicture.asset(
-                        'assets/icons/Notifications.svg',
-                        width: 22,
-                        height: 22,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Gap(15),
+
+              // ======================== WEEK CALENDAR (VI) ========================
               Container(
                 width: 335,
-                height: 160,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   boxShadow: [
@@ -84,101 +88,122 @@ class _ScheduleScreenState extends State<SheduleScreen> {
                   ],
                   borderRadius: BorderRadius.circular(24),
                 ),
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-                child: EasyDateTimeLine(
-                  initialDate: _focusDate,
-                  onDateChange: (selectedDate) {
+                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                child: TableCalendar<String>(
+                  locale: 'vi_VN', // yêu cầu flutter_localizations + intl
+                  firstDay: DateTime.utc(2010, 1, 1),
+                  lastDay: DateTime.utc(2030, 12, 31),
+                  focusedDay: _focusedDay,
+                  selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                  calendarFormat: CalendarFormat.week, // Dạng strip tuần
+                  startingDayOfWeek: StartingDayOfWeek.monday, // Thứ 2 bắt đầu
+
+                  // Nạp sự kiện cho từng ngày
+                  eventLoader: (day) => _eventMap[_onlyDate(day)] ?? const [],
+
+                  onDaySelected: (selectedDay, focusedDay) {
                     setState(() {
-                      _focusDate = selectedDate;
+                      _selectedDay = _onlyDate(selectedDay);
+                      _focusedDay = focusedDay;
+                      _focusDate =
+                          focusedDay; // đồng bộ biến cũ nếu cần dùng nơi khác
                     });
                   },
-                  headerProps: const EasyHeaderProps(
-                    monthPickerType: MonthPickerType.switcher,
-                    centerHeader: false,
-                    monthStyle: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                    showHeader: true,
-                    padding: EdgeInsets.only(bottom: 4),
+
+                  headerStyle: const HeaderStyle(
+                    titleCentered: true,
+                    formatButtonVisible: false,
+                    titleTextStyle:
+                        TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                    leftChevronIcon: Icon(Icons.chevron_left),
+                    rightChevronIcon: Icon(Icons.chevron_right),
                   ),
-                  dayProps: const EasyDayProps(
-                    height: 80,
-                    width: 46,
-                    activeDayDecoration: BoxDecoration(
+
+                  daysOfWeekStyle: const DaysOfWeekStyle(
+                    weekendStyle: TextStyle(color: Colors.grey),
+                    weekdayStyle: TextStyle(color: Colors.grey),
+                  ),
+
+                  calendarStyle: CalendarStyle(
+                    // Ngày được chọn
+                    selectedDecoration: BoxDecoration(
                       color: Colors.orange,
-                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    inactiveDayDecoration: BoxDecoration(
+                    selectedTextStyle: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+
+                    // Hôm nay -> viền xanh
+                    todayDecoration: BoxDecoration(
                       color: Colors.transparent,
+                      border: Border.all(color: Colors.blueAccent, width: 1.5),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    inactiveDayNumStyle: TextStyle(
-                      fontSize: 12,
-                      color: Colors.black87,
-                      fontWeight: FontWeight.w500,
+                    todayTextStyle: const TextStyle(color: Colors.black),
+
+                    // Decor mặc định
+                    defaultDecoration: BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    inactiveDayStrStyle: TextStyle(
-                      fontSize: 10,
-                      color: Colors.grey,
+                    weekendDecoration: BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    activeDayNumStyle: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
+
+                    defaultTextStyle:
+                        const TextStyle(fontSize: 14, color: Colors.black),
+                    weekendTextStyle:
+                        const TextStyle(fontSize: 14, color: Colors.black),
+
+                    // Dấu “dot” dưới ngày có event
+                    markerDecoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.orange,
                     ),
-                    activeDayStrStyle: TextStyle(
-                      fontSize: 10,
-                      color: Colors.white,
-                    ),
+                    markersAlignment: Alignment.bottomCenter,
+                    markersMaxCount: 1,
                   ),
                 ),
               ),
+              // ======================== END WEEK CALENDAR ========================
+
               const Gap(10),
               const Padding(
-                padding: EdgeInsets.only(left: 18.0, right: 18),
-                child: MiddleAppText(
-                  text: 'Shedule',
-                ),
+                padding: EdgeInsets.symmetric(horizontal: 18),
+                child: MiddleAppText(text: 'Danh sách hoạt động'),
               ),
               const Gap(10),
+
               TravelCardWidget(
                 imagePath: 'assets/images/bgsearch.jpg',
-                date: '26 January 2022',
-                title: 'Kerinci Mountain',
+                date: '26 Tháng 1 2022',
+                title: 'Núi Kerinci',
                 location: 'Solok, Jambi',
                 onPressed: () {
-                  print('Pressed Arrow');
+                  debugPrint('Nhấn vào mũi tên');
                 },
               ),
               const Gap(10),
               TravelCardWidget(
                 imagePath: 'assets/images/bgsearch.jpg',
-                date: '26 January 2022',
-                title: 'Kerinci Mountain',
-                location: 'Solok, Jambi',
+                date: '27 Tháng 1 2022',
+                title: 'Thác nước Air Terjun',
+                location: 'Padang, Sumatera',
                 onPressed: () {
-                  print('Pressed Arrow');
+                  debugPrint('Nhấn vào mũi tên');
                 },
               ),
               const Gap(10),
               TravelCardWidget(
                 imagePath: 'assets/images/bgsearch.jpg',
-                date: '26 January 2022',
-                title: 'Kerinci Mountain',
-                location: 'Solok, Jambi',
+                date: '28 Tháng 1 2022',
+                title: 'Làng Văn hoá Minangkabau',
+                location: 'Bukittinggi',
                 onPressed: () {
-                  print('Pressed Arrow');
-                },
-              ),
-              const Gap(10),
-              TravelCardWidget(
-                imagePath: 'assets/images/bgsearch.jpg',
-                date: '26 January 2022',
-                title: 'Kerinci Mountain',
-                location: 'Solok, Jambi',
-                onPressed: () {
-                  print('Pressed Arrow');
+                  debugPrint('Nhấn vào mũi tên');
                 },
               ),
             ],
@@ -208,7 +233,7 @@ class TravelCardWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 18.0, right: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 18),
       child: Container(
         height: 100,
         width: 370,
@@ -224,11 +249,9 @@ class TravelCardWidget extends StatelessWidget {
           ],
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.only(left: 4.0),
+              padding: const EdgeInsets.only(left: 4),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(21),
                 child: Image.asset(
@@ -242,10 +265,9 @@ class TravelCardWidget extends StatelessWidget {
             const Gap(10),
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Gap(5),
                   Row(
                     children: [
                       const Icon(Icons.calendar_today_outlined,
@@ -261,9 +283,9 @@ class TravelCardWidget extends StatelessWidget {
                   const Gap(5),
                   Text(
                     title,
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.lato(
                       fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                       color: Colors.black,
                     ),
                   ),
@@ -286,12 +308,11 @@ class TravelCardWidget extends StatelessWidget {
             IconButton(
               onPressed: onPressed,
               icon: Transform.rotate(
-                angle: 3.1416, // 180 độ
+                angle: 3.1416,
                 child: SvgPicture.asset(
                   'assets/icons/Arrow.svg',
                   width: 26,
                   height: 26,
-                  fit: BoxFit.contain,
                 ),
               ),
             )

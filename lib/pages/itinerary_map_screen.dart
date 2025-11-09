@@ -4,26 +4,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_animations/flutter_map_animations.dart';
 import 'package:flutter_map_marker_popup/flutter_map_marker_popup.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:gap/gap.dart';
+import 'package:intl/intl.dart';
 import 'package:travel_app/widget/location_card.dart';
-import 'package:travel_app/widget/reuseable_text.dart';
-
 import '../widget/widget.dart';
 
-class MyMapPage extends StatefulWidget {
-  const MyMapPage({super.key});
+class ItineraryMapScreen extends StatefulWidget {
+  const ItineraryMapScreen({super.key});
 
   @override
-  State<MyMapPage> createState() => _MyMapPageState();
+  State<ItineraryMapScreen> createState() => _ItineraryMapScreenState();
 }
 
-class _MyMapPageState extends State<MyMapPage> with TickerProviderStateMixin {
+class _ItineraryMapScreenState extends State<ItineraryMapScreen>
+    with TickerProviderStateMixin {
   late final AnimatedMapController _animatedMapController;
   final PopupController _popupController = PopupController();
   Timer? _timer;
   int _segmentIndex = 0;
   int _stepIndex = 0;
+
+  // Ngày bắt đầu hành trình (có thể thay bằng ngày từ API)
+  final DateTime _startDate = DateTime(2025, 11, 6);
 
   final List<LatLng> routePoints = [
     const LatLng(10.7945, 106.7218), // Landmark 81
@@ -104,6 +108,16 @@ class _MyMapPageState extends State<MyMapPage> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  /// Trả về map chứa "day" (Ngày X) và "date" (dd/MM/yyyy)
+  Map<String, String> _vnDayLabel(int dayIndex) {
+    final d = _startDate.add(Duration(days: dayIndex));
+    final f = DateFormat('dd/MM/yyyy', 'vi_VN');
+    return {
+      'day': 'Ngày ${dayIndex + 1}',
+      'date': f.format(d),
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentCarPosition =
@@ -137,7 +151,7 @@ class _MyMapPageState extends State<MyMapPage> with TickerProviderStateMixin {
                 ],
               ),
 
-              // Marker xe
+              // Marker xe di chuyển
               MarkerLayer(
                 markers: [
                   Marker(
@@ -153,7 +167,7 @@ class _MyMapPageState extends State<MyMapPage> with TickerProviderStateMixin {
                 ],
               ),
 
-              // ✅ Popup marker (có thể bấm được onTap trong card)
+              // Popup marker
               // ignore: deprecated_member_use
               PopupMarkerLayerWidget(
                 options: PopupMarkerLayerOptions(
@@ -176,11 +190,15 @@ class _MyMapPageState extends State<MyMapPage> with TickerProviderStateMixin {
                   popupDisplayOptions: PopupDisplayOptions(
                     builder: (context, marker) {
                       final index = routePoints.indexOf(marker.point);
+                      final label = _vnDayLabel(index);
+                      final String dayText = label['day']!;
+                      final String dateText = label['date']!;
+
                       return LocationCard(
                         imagePath: 'assets/images/mountain2.png',
-                        title: 'Lemon Garden',
-                        distance: '2.09 mi',
-                        day: 'Day ${index + 1}',
+                        title: 'Điểm dừng ${index + 1}',
+                        day: dayText, // "Ngày X"
+                        date: dateText, // "dd/MM/yyyy"
                         onTap: () {
                           showModalBottomSheet(
                             context: context,
@@ -197,7 +215,7 @@ class _MyMapPageState extends State<MyMapPage> with TickerProviderStateMixin {
             ],
           ),
 
-          // 🧭 AppBar
+          // AppBar tuỳ chỉnh
           Align(
             alignment: Alignment.topCenter,
             child: Padding(
@@ -209,11 +227,15 @@ class _MyMapPageState extends State<MyMapPage> with TickerProviderStateMixin {
                     onPressed: () => Navigator.pop(context),
                   ),
                   const Gap(60),
-                  const AppText(
-                    text: 'Tour Schedule',
-                    size: 20,
-                    color: Colors.black,
-                    fontWeight: FontWeight.w600,
+                  Text(
+                    'Lịch trình tour',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.lato(
+                      fontSize: 20,
+                      height: 22 / 20,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1B1E28),
+                    ),
                   ),
                 ],
               ),

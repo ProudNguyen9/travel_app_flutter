@@ -10,3 +10,5 @@ export 'more_detail_screen.dart';
 export 'detail_screen.dart';
 export 'Login/forgotpassword.dart';
 export 'Login/reset_password_screen.dart';
+export 'payment_tour_screen.dart';
+export 'reviewsscreen.dart';

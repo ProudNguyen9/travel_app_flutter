@@ -1,563 +1,269 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'more_detail_screen.dart';
-import '../models/people_also_like_model.dart';
-import '../models/tab_bar_model.dart';
-import '../widget/reuseable_text.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:gap/gap.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-class DetailsPage extends StatefulWidget {
-  const DetailsPage({
-    super.key,
-    required this.tabData,
-    required this.personData,
-    required this.isCameFromPersonSection,
-  });
-
-  final TabBarModel? tabData;
-  final PeopleAlsoLikeModel? personData;
-  final bool isCameFromPersonSection;
+class DetailScreen extends StatefulWidget {
+  const DetailScreen({super.key});
 
   @override
-  State<DetailsPage> createState() => _DetailsPageState();
+  State<DetailScreen> createState() => _DetailScreenState();
 }
 
-class _DetailsPageState extends State<DetailsPage>
-    with TickerProviderStateMixin {
-  final EdgeInsetsGeometry padding =
-      const EdgeInsets.symmetric(horizontal: 20.0);
-  dynamic current;
+class _DetailScreenState extends State<DetailScreen> {
+  static const primary = Color(0xFF24BAEC);
 
-  double _headerScale = 1.0;
-  late final AnimationController _rebound;
-  late Animation<double> _reboundTween;
-  VoidCallback? _reboundListener;
+  // TODO: đổi thành ảnh của bạn
+  final List<String> _images = [
+    'assets/images/dongnai.jpg',
+    'assets/images/nhatrang.jpg',
+    'assets/images/hue.jpg',
+    'assets/images/anh-da-lat.jpg',
+    'assets/images/dongnai.jpg',
+  ];
 
-  late final AnimationController _entrance;
-  late final Animation<double> _fadeIn;
-  late final DraggableScrollableController _sheetCtrl;
+  int _selectedIndex = 0;
 
-  late List<String> galleryImages;
-  int selectedImageIndex = 0;
-
-  void _pickCurrent() {
-    current = (widget.tabData == null) ? widget.personData : widget.tabData;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _pickCurrent();
-
-    galleryImages = [
-      current.image,
-      "assets/images/main.png",
-      'assets/images/discount.png',
-    ];
-
-    _entrance = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 650),
-    );
-    _fadeIn = CurvedAnimation(parent: _entrance, curve: Curves.easeOutCubic);
-
-    _rebound = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 180));
-    _sheetCtrl = DraggableScrollableController();
-
-    _entrance.forward();
-  }
-
-  @override
-  void dispose() {
-    if (_reboundListener != null) {
-      _rebound.removeListener(_reboundListener!);
-      _reboundListener = null;
-    }
-    _rebound.dispose();
-    _entrance.dispose();
-    super.dispose();
-  }
-
-  bool _onScrollNotif(ScrollNotification n) {
-    if (n is OverscrollNotification && n.overscroll < 0) {
-      final add = (-n.overscroll) / 300;
-      final next = (1.0 + add).clamp(1.0, 1.25);
-      setState(() => _headerScale = next);
-      return false;
-    }
-    if ((n is ScrollEndNotification || n is UserScrollNotification) &&
-        _headerScale > 1.0) {
-      if (_reboundListener != null) {
-        _rebound.removeListener(_reboundListener!);
-        _reboundListener = null;
-      }
-      _rebound.stop();
-      _rebound.reset();
-      _reboundTween = Tween<double>(begin: _headerScale, end: 1.0).animate(
-          CurvedAnimation(parent: _rebound, curve: Curves.easeOutCubic));
-      _reboundListener =
-          () => setState(() => _headerScale = _reboundTween.value);
-      _rebound.addListener(_reboundListener!);
-      _rebound.forward();
-    }
-    return false;
-  }
+  TextStyle lato(double s,
+          {FontWeight w = FontWeight.w400,
+          Color c = const Color(0xFF151111),
+          double? h}) =>
+      GoogleFonts.lato(fontSize: s, fontWeight: w, color: c, height: h);
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    const snaps = [0.52, 0.8, 1.0];
+    final double imageWidth = size.width - 32;
+    final double imageHeight = size.height * 0.3;
 
     return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: _buildAppBar(),
-      body: NotificationListener<ScrollNotification>(
-        onNotification: _onScrollNotif,
-        child: Stack(
-          children: [
-            // ======= HEADER IMAGE =======
-            Positioned.fill(
-              child: Stack(
-                children: [
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 500),
-                    child: Hero(
-                      key: ValueKey(galleryImages[selectedImageIndex]),
-                      tag: widget.isCameFromPersonSection
-                          ? (current.day ?? current.image)
-                          : current.image,
-                      child: Transform.scale(
-                        scale: _headerScale,
-                        alignment: Alignment.topCenter,
-                        child: Container(
-                          height: size.height * 0.65,
-                          decoration: BoxDecoration(
-                            image: DecorationImage(
-                              image:
-                                  AssetImage(galleryImages[selectedImageIndex]),
-                              fit: BoxFit.cover,
-                              alignment: Alignment.topCenter,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+      backgroundColor: const Color(0xFFF7F8FA),
+      appBar: AppBar(
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon:
+              const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title:
+            Text('Chi tiết', style: lato(18, h: 26 / 18, w: FontWeight.w600)),
+      ),
+      body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Stack(children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ==== ẢNH LỚN (đổi theo thumbnail) ====
+              Container(
+                width: imageWidth,
+                height: imageHeight,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: primary, width: 2),
+                  image: DecorationImage(
+                    image: AssetImage(_images[_selectedIndex]),
+                    fit: BoxFit.cover,
                   ),
+                ),
+              ),
+              const SizedBox(height: 10),
 
-                  // ======= MINI GALLERY PILL =======
-                  Positioned(
-                    right: 14,
-                    top: size.height * 0.18,
-                    child: FadeTransition(
-                      opacity: _fadeIn,
-                      child: _MiniGalleryPill(
-                        images: galleryImages,
-                        selectedIndex: selectedImageIndex,
-                        onImageTap: (i) {
-                          setState(() => selectedImageIndex = i);
-                        },
-                      ),
+              // ==== TIỆN ÍCH + RATING ====
+              Row(
+                children: [
+                  _amenity(icon: Icons.wifi, text: 'Miễn phí Wifi'),
+                  const SizedBox(width: 18),
+                  _amenity(
+                      icon: Icons.free_breakfast, text: 'Miễn phí ăn sáng'),
+                  const Spacer(),
+                  Text('5.0',
+                      style: lato(14, w: FontWeight.w600, c: Colors.black87)),
+                  const Gap(5),
+                  const Icon(Icons.star_rounded,
+                      color: Color(0xFFFFC107), size: 22),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // ==== TIÊU ĐỀ ====
+              Row(
+                children: [
+                  Expanded(
+                      child: Text('Vũng Tàu',
+                          style:
+                              lato(22, w: FontWeight.w600, c: Colors.black))),
+                ],
+              ),
+              const SizedBox(height: 6),
+
+              Row(
+                children: [
+                  const Icon(Icons.place_rounded, size: 16, color: primary),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Bãi Sau, Bà Rịa – Vũng Tàu',
+                      style: lato(13.5, c: Colors.black54),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 16),
 
-            // ======= WHITE SHEET CONTENT =======
-            _BottomSnapSheet(
-              controller: _sheetCtrl,
-              initial: snaps.first,
-              min: snaps.first,
-              max: snaps.last,
-              snaps: snaps,
-              padding: padding,
-              entrance: _fadeIn,
-              header: const SizedBox(height: 16),
-              contentBuilder: (ctx, controller) => [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
+                children: [
+                  Text('Mô tả',
+                      style: lato(16, w: FontWeight.w700, c: primary)),
+                  const Spacer(),
+                  Text('400.000VND/người',
+                      style: lato(16, w: FontWeight.w700, c: Colors.black87)),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              Text.rich(
+                TextSpan(
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          AppText(
-                            text: current.title ?? 'The Nautilus',
-                            size: 22,
-                            color: Colors.black,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          const SizedBox(height: 4),
-                          AppText(
-                            text: current.location ?? 'Maldives',
-                            size: 16,
-                            color: Colors.black87,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ],
-                      ),
+                    TextSpan(
+                      text:
+                          'Each of the 26 houses is a suite with separate living and bedrooms, as well as personal butler, private pool and ocean views. In every house guests can enjoy free wifi, complimentary water, tea, coffee and soft drinks, bottle of champagne on arrival ',
+                      style: lato(14, c: Colors.black54, h: 1.5),
                     ),
-                    const SizedBox(width: 12),
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        AppText(
-                          text: '\$85/Day',
-                          size: 16,
-                          color: Colors.black,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ],
-                    ),
+                    TextSpan(
+                        text: 'Đọc thêm',
+                        style: lato(13, w: FontWeight.w700, c: primary)),
                   ],
                 ),
-                const SizedBox(height: 16),
-                const _BlueLink(text: 'Overview'),
-                const SizedBox(height: 14),
-                const Row(
-                  children: [
-                    _InfoBadge(
-                      icon: Icons.access_time_filled,
-                      title: 'DURATION           ',
-                      value: '3 Days',
-                    ),
-                    SizedBox(width: 14),
-                    _InfoBadge(
-                      icon: Icons.star,
-                      title: 'RATING',
-                      value: '5.0  (2.9k Reviews)',
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const AppText(
-                  text:
-                      'The Nautilus is a privately-owned luxury resort in the Baa atoll UNESCO biosphere reserve, near Hanifaru Bay where you can swim with manta rays in season. This natural island has its own outstanding coral reef just metres from its beaches.',
-                  size: 13,
-                  color: Colors.black54,
-                  fontWeight: FontWeight.w300,
-                ),
-                const SizedBox(height: 22),
-                Row(
-                  children: [
-                    Expanded(
-                      child: SizedBox(
-                        height: 50,
-                        child: ElevatedButton(
-                          onPressed: () {},
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF24BAEC),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(21),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: const Text(
-                            'Book Now',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                              fontSize: 16,
-                            ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // ==== PHOTOS HEADER ====
+              Row(
+                children: [
+                  Text('Hình ảnh',
+                      style: lato(16, w: FontWeight.w700, c: primary)),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // ==== DÃY ẢNH (chọn -> đổi ảnh lớn) ====
+              SizedBox(
+                height: 80,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _images.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, i) {
+                    final active = i == _selectedIndex;
+                    return GestureDetector(
+                      onTap: () => setState(() => _selectedIndex = i),
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                              color: active ? primary : Colors.transparent,
+                              width: 2),
+                          boxShadow: active
+                              ? [
+                                  BoxShadow(
+                                    color: primary.withOpacity(.18),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 6),
+                                  ),
+                                ]
+                              : null,
+                          image: DecorationImage(
+                            image: AssetImage(_images[i]),
+                            fit: BoxFit.cover,
                           ),
                         ),
                       ),
+                    );
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              // ==== BOOK NOW ====
+              Center(
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 164,
+                      height: 54,
+                      child: ElevatedButton(
+                        onPressed: () {},
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primary,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(34)),
+                          elevation: 0,
+                        ),
+                        child: Text('Đặt ngay',
+                            style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w400,
+                                color: Colors.white)),
+                      ),
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: SizedBox(
-                        height: 50,
-                        child: OutlinedButton(
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => MoreDetailScreen(
-                                  image: current.image,
-                                  title:
-                                      current.title ?? 'The Nautilus Maldives',
-                                  location:
-                                      '${current.title ?? 'The Nautilus Maldives'}, ${current.location ?? 'Baa Atoll'}',
-                                  pricePerDay: '\$85/Day',
-                                  rating: 5.0,
-                                  photos: galleryImages,
-                                ),
-                              ),
-                            );
-                          },
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(
-                                color: Color(0xFF24BAEC), width: 1.6),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(21)),
+                    const Gap(10),
+                    SizedBox(
+                      width: 140,
+                      height: 54,
+                      child: OutlinedButton(
+                        onPressed: () {},
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(
+                              color: primary, width: 2), // viền
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(34),
                           ),
-                          child: const Text(
-                            'More Details',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                              color: Color(0xFF24BAEC),
-                            ),
+                          foregroundColor: primary, // màu chữ & ripple
+                        ),
+                        child: Text(
+                          'Yêu thích',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w400,
+                            color: primary, // chữ màu primary
                           ),
                         ),
                       ),
-                    ),
+                    )
                   ],
                 ),
-                const SizedBox(height: 8),
-                const SafeArea(top: false, child: SizedBox(height: 4)),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  AppBar _buildAppBar() {
-    return AppBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      centerTitle: true,
-      title: const Text(
-        'Details',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.5,
-        ),
-      ),
-      leading: IconButton(
-        icon: const Icon(
-          Icons.arrow_back_ios_new_rounded,
-          color: Colors.white,
-          size: 22,
-        ),
-        onPressed: () => Navigator.pop(context),
-        tooltip: 'Back',
-      ),
-    );
-  }
-}
-
-/* ------------------------- Sub-widgets ------------------------- */
-class _MiniGalleryPill extends StatelessWidget {
-  const _MiniGalleryPill({
-    required this.images,
-    required this.selectedIndex,
-    required this.onImageTap,
-    this.bg,
-    this.blur = 6,
-  });
-
-  final List<String> images;
-  final int selectedIndex;
-  final ValueChanged<int> onImageTap;
-  final Color? bg;
-  final double blur;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color base = bg ?? Colors.white.withOpacity(0.75);
-    final bool isLight = base.computeLuminance() > 0.5;
-    final Color borderColor = isLight ? Colors.black26 : Colors.white30;
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(26),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: Container(
-          width: 52,
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: base,
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(color: borderColor, width: 1),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.18),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
               ),
+              const SizedBox(height: 24),
             ],
           ),
-          child: Column(
-            children: [
-              for (int i = 0; i < images.length; i++) ...[
-                GestureDetector(
-                  onTap: () => onImageTap(i),
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: i == selectedIndex
-                            ? const Color(0xFF24BAEC)
-                            : Colors.transparent,
-                        width: 2,
-                      ),
-                    ),
-                    child: ClipOval(
-                      child: Image.asset(
-                        images[i],
-                        width: 36,
-                        height: 36,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 4),
-              Text(
-                '+${images.length - 3 > 0 ? images.length - 3 : 0}',
-                style: const TextStyle(
-                  color: Color(0xFF24BAEC),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
+        ]),
       ),
     );
   }
 }
 
-/* ------------------------- Reusable Widgets ------------------------- */
-class _BlueLink extends StatelessWidget {
-  const _BlueLink({required this.text});
-  final String text;
+// ===== Widgets phụ =====
 
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        color: Color(0xFF24BAEC),
-        fontSize: 16,
-        fontWeight: FontWeight.w700,
+Widget _amenity({required IconData icon, required String text}) {
+  return Row(
+    children: [
+      Icon(icon, size: 18, color: Colors.black87),
+      const SizedBox(width: 6),
+      Text(
+        text,
+        style: GoogleFonts.lato(
+            fontSize: 12.5, color: Colors.black87, fontWeight: FontWeight.w500),
       ),
-    );
-  }
-}
-
-class _InfoBadge extends StatelessWidget {
-  const _InfoBadge({
-    required this.icon,
-    required this.title,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String title;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE8F9FD),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF24BAEC), width: 0.6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 18, color: const Color(0xFF24BAEC)),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: Color(0xFF24BAEC),
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.4,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 12.5,
-                  color: Colors.black87,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BottomSnapSheet extends StatelessWidget {
-  const _BottomSnapSheet({
-    required this.padding,
-    required this.header,
-    required this.contentBuilder,
-    required this.entrance,
-    required this.controller,
-    this.initial = 0.52,
-    this.min = 0.52,
-    this.max = 1.0,
-    this.snaps = const [0.52, 0.8, 1.0],
-  });
-
-  final double initial;
-  final double min;
-  final double max;
-  final List<double> snaps;
-  final EdgeInsetsGeometry padding;
-  final Widget header;
-  final List<Widget> Function(BuildContext, ScrollController) contentBuilder;
-  final Animation<double> entrance;
-  final DraggableScrollableController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      controller: controller,
-      initialChildSize: initial,
-      minChildSize: min,
-      maxChildSize: max,
-      snap: true,
-      snapSizes: snaps,
-      builder: (ctx, listCtrl) {
-        final pad = padding.resolve(Directionality.of(ctx));
-        return FadeTransition(
-          opacity: entrance,
-          child: Material(
-            color: Colors.white,
-            elevation: 0,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(26),
-                topRight: Radius.circular(26),
-              ),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: ListView(
-              controller: listCtrl,
-              physics: const BouncingScrollPhysics(),
-              padding: pad.copyWith(
-                bottom: pad.bottom + MediaQuery.of(ctx).padding.bottom + 18,
-              ),
-              children: [
-                const SizedBox(height: 8),
-                header,
-                ...contentBuilder(ctx, listCtrl),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
+    ],
+  );
 }

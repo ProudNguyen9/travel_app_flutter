@@ -5,13 +5,16 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:travel_app/authenticaion/auth_provider.dart';
 import 'package:travel_app/pages/screen.dart';
 import 'package:travel_app/pages/welcome_page.dart';
+// ignore: depend_on_referenced_packages
+import 'package:intl/date_symbol_data_local.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-
+// 🔥 Khởi tạo dữ liệu định dạng cho tiếng Việt
+  await initializeDateFormatting('vi_VN', null);
   await Supabase.initialize(
     url: 'https://yszeuemcqrydkfbhvdhj.supabase.co',
     anonKey:
