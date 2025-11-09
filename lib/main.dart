@@ -2,61 +2,71 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:travel_app/authenticaion/auth_provider.dart';
-import 'package:travel_app/pages/screen.dart';
-import 'package:travel_app/pages/welcome_page.dart';
-// ignore: depend_on_referenced_packages
 import 'package:intl/date_symbol_data_local.dart';
 
+import 'package:travel_app/authenticaion/auth_provider.dart';
+import 'package:travel_app/pages/home_screen.dart';
+import 'package:travel_app/pages/screen.dart'; // SplashScreen, LoginScreen, SignUpScreen, ResetPasswordScreen
+
+// ====== Navigator key & routing guard ======
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+bool _isRouting = false;
+void _go(String route) {
+  if (_isRouting) return; // chặn đúp
+  _isRouting = true;
+  navigatorKey.currentState?.pushNamedAndRemoveUntil(route, (r) => false);
+  Future.delayed(const Duration(milliseconds: 300), () => _isRouting = false);
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-// 🔥 Khởi tạo dữ liệu định dạng cho tiếng Việt
   await initializeDateFormatting('vi_VN', null);
+
   await Supabase.initialize(
     url: 'https://yszeuemcqrydkfbhvdhj.supabase.co',
     anonKey:
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzemV1ZW1jcXJ5ZGtmYmh2ZGhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyMDIwMTksImV4cCI6MjA3NDc3ODAxOX0.2b1l53MlZoC600ApWemncNNgFnomwaRTSYdWBYqrweo',
   );
 
+  // ====== Auth event listener (an toàn, không điều hướng sang /home ở đây) ======
   Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
-    final AuthChangeEvent event = data.event;
-    final Session? session = data.session;
+    final event = data.event;
+    final session = data.session;
 
-    // 1) Người dùng bấm link RESET PASSWORD gửi từ email
+    // 1) User bấm link reset password từ email
     if (event == AuthChangeEvent.passwordRecovery) {
-      navigatorKey.currentState?.pushNamedAndRemoveUntil(
-        '/reset-password',
-        (route) => false,
-      );
+      _go('/reset-password');
       return;
     }
 
-    // 2) Người dùng mới xác thực email đăng ký → session != null
+    // 2) Case "vừa xác thực email lần đầu" → signOut để buộc user đăng nhập lại
     if (event == AuthChangeEvent.signedIn && session != null) {
       final user = session.user;
-
-      // Đây là dấu hiệu: vừa xác thực email xong (login lần đầu)
       final isFirstTimeVerified = user.lastSignInAt == user.createdAt;
 
       if (isFirstTimeVerified) {
-        // Đăng nhập tự động sau xác thực → ta signOut để đưa về login
         await Supabase.instance.client.auth.signOut();
+        _go('/login');
 
-        navigatorKey.currentState?.pushNamedAndRemoveUntil(
-          '/login',
-          (route) => false,
-        );
-
-        ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
-          const SnackBar(
-            content: Text("🎉 Email đã xác thực thành công! Đăng nhập nào 💛"),
-            backgroundColor: Colors.green,
-          ),
-        );
+        final ctx = navigatorKey.currentContext;
+        if (ctx != null) {
+          ScaffoldMessenger.of(ctx).showSnackBar(
+            const SnackBar(
+              content:
+                  Text("🎉 Email đã xác thực thành công! Đăng nhập nào 💛"),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       }
+
+      // ❗ KHÔNG điều hướng sang /home tại đây để tránh trùng với Login/Splash
+    }
+
+    // 3) Khi signedOut → quay về Login
+    if (event == AuthChangeEvent.signedOut) {
+      _go('/login');
     }
   });
 
@@ -77,13 +87,17 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: navigatorKey,
-      title: 'Flutter Travel App',
       debugShowCheckedModeBanner: false,
-      initialRoute: '/login',
+      title: 'Travel App',
+
+      // 👉 Splash trước tiên (Splash của bạn đã có welcome kèm trong đó)
+      initialRoute: '/splash',
+
       routes: {
+        '/splash': (context) => const SplashScreen(),
         '/login': (context) => const LoginScreen(),
         '/signup': (context) => const SignUpScreen(),
-        '/home': (context) => const WelcomePage(),
+        '/home': (context) => const HomeScreen(),
         '/reset-password': (context) => const ResetPasswordScreen(),
       },
     );

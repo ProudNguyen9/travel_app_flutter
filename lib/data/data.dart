@@ -1,6 +1,6 @@
 export 'services/supabase_service.dart';
-export '';
-export '';
+export 'models/tour_full.dart';
+export 'services/tour_service.dart';
 export '';
 export '';
 export '';

@@ -12,3 +12,11 @@ export 'Login/forgotpassword.dart';
 export 'Login/reset_password_screen.dart';
 export 'payment_tour_screen.dart';
 export 'reviewsscreen.dart';
+export 'splash_screen.dart';
+export 'settings_screen.dart';
+export 'profile_screen.dart';
+export 'edit_profile_screen.dart';
+export 'destination_list_screen.dart';
+export 'favorite_places_page.dart';
+export 'bookings_history_screen.dart';
+

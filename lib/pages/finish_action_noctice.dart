@@ -16,7 +16,7 @@ class FinishActionNoticeScreen extends StatelessWidget {
           children: [
             const Gap(140),
             Text(
-              "Congratulations !",
+              "Chúc mừng bạn !",
               style: GoogleFonts.lato(
                 fontSize: 28,
                 fontWeight: FontWeight.w500,
@@ -24,7 +24,7 @@ class FinishActionNoticeScreen extends StatelessWidget {
               ),
             ),
             Text(
-              "Your Room has been successfully booked.",
+              "Giao dịch của bạn đã thành công.",
               style: GoogleFonts.lato(
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
@@ -33,8 +33,8 @@ class FinishActionNoticeScreen extends StatelessWidget {
             ),
             Image.asset('assets/icons/success.png'),
             Text(
-              "A confirmation email has been sent to\nabisolasherif23@gmail.com",
-              textAlign: TextAlign.center, 
+              "Email xác nhận đã được gửi đến\nabisolasherif23@gmail.com",
+              textAlign: TextAlign.center,
               style: GoogleFonts.lato(
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
@@ -45,7 +45,7 @@ class FinishActionNoticeScreen extends StatelessWidget {
             OutlinedButton(
               onPressed: () {},
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.blueAccent, width: 1),
+                side: const BorderSide(color: Color(0xFF24BAEC), width: 1),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
                 ),
@@ -53,9 +53,9 @@ class FinishActionNoticeScreen extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
               ),
               child: Text(
-                "Back To Homepage",
+                "Quay về trang chủ",
                 style: GoogleFonts.lato(
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: FontWeight.w500,
                   color: Colors.black,
                 ),

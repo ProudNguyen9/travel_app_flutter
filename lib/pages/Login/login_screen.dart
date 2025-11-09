@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:travel_app/authenticaion/auth_provider.dart';
-import 'package:travel_app/pages/welcome_page.dart';
 
 import '../../widget/widget.dart';
 import '../screen.dart';
@@ -42,7 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
         );
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const WelcomePage()),
+          MaterialPageRoute(builder: (context) => const SimpleBottomScaffold()),
         );
       }
     } on AuthException catch (e) {
@@ -225,7 +224,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => const WelcomePage()),
+                                  builder: (context) => const SimpleBottomScaffold()),
                             );
                           }
                         } catch (e) {
@@ -251,7 +250,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (context) => const WelcomePage()));
+                                    builder: (context) => const SimpleBottomScaffold()));
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
@@ -280,7 +279,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => const WelcomePage()),
+                                  builder: (context) => const SimpleBottomScaffold()),
                             );
                           }
                         } catch (e) {

@@ -5,9 +5,9 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:travel_app/authenticaion/auth_provider.dart';
 import 'package:travel_app/pages/Login/login_screen.dart';
+import 'package:travel_app/pages/home_screen.dart';
 import 'package:travel_app/widget/icon.dart';
 
-import '../welcome_page.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -268,7 +268,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               // ignore: use_build_context_synchronously
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => const WelcomePage()),
+                                  builder: (context) => const HomeScreen()),
                             );
                           }
                         } catch (e) {
@@ -297,7 +297,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 // ignore: use_build_context_synchronously
                                 context,
                                 MaterialPageRoute(
-                                    builder: (context) => const WelcomePage()));
+                                    builder: (context) => const HomeScreen()));
                           } else {
                             // ignore: use_build_context_synchronously
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -328,7 +328,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               // ignore: use_build_context_synchronously
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => const WelcomePage()),
+                                  builder: (context) => const HomeScreen()),
                             );
                           }
                         } catch (e) {
