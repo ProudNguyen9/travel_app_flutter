@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:travel_app/pages/payment_tour_screen.dart';
 import 'package:travel_app/utils/extensions.dart';
 
 class ChooseMethodPayScreen extends StatefulWidget {
@@ -220,7 +221,7 @@ class _ChooseMethodPayScreenState extends State<ChooseMethodPayScreen> {
               // 🔹 Continue button
               Center(
                 child: SizedBox(
-                  width: context.deviceSize.width * 0.8,
+                  width: context.deviceSize.width * 0.9,
                   height: 52,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
@@ -230,7 +231,14 @@ class _ChooseMethodPayScreenState extends State<ChooseMethodPayScreen> {
                       ),
                       elevation: 3,
                     ),
-                    onPressed: () {},
+                    onPressed: () {
+                      // Navigator.push(
+                      //     context,
+                      //     MaterialPageRoute(
+                      //         builder: (_) => PaymentTourScreen(
+                      //             startDate: DateTime.now(),
+                      //             endDate: DateTime.now())));
+                    },
                     child: Text(
                       'Tiếp tục',
                       style: GoogleFonts.lato(

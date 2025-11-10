@@ -152,7 +152,7 @@ class ProfileScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => const FavoritePlacesPage(),
+                  builder: (_) => const FavoriteToursPage(),
                 ),
               );
             },

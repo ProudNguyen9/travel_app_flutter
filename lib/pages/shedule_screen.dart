@@ -3,6 +3,7 @@ import 'package:flutter_svg/svg.dart';
 import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:travel_app/pages/screen.dart';
 import 'package:travel_app/widget/reuseabale_middle_app_text.dart';
 
 class SheduleScreen extends StatefulWidget {
@@ -52,11 +53,7 @@ class _ScheduleScreenState extends State<SheduleScreen> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon:
-              const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false,
         title: Text(
           'Lịch trình',
           style: GoogleFonts.lato(
@@ -178,32 +175,15 @@ class _ScheduleScreenState extends State<SheduleScreen> {
               const Gap(10),
 
               TravelCardWidget(
-                imagePath: 'assets/images/bgsearch.jpg',
+                imagePath: 'assets/images/hue.jpg',
                 date: '26 Tháng 1 2022',
-                title: 'Núi Kerinci',
-                location: 'Solok, Jambi',
+                title: 'Cung đình Huế',
+                location: 'Thành phố Huế',
                 onPressed: () {
-                  debugPrint('Nhấn vào mũi tên');
-                },
-              ),
-              const Gap(10),
-              TravelCardWidget(
-                imagePath: 'assets/images/bgsearch.jpg',
-                date: '27 Tháng 1 2022',
-                title: 'Thác nước Air Terjun',
-                location: 'Padang, Sumatera',
-                onPressed: () {
-                  debugPrint('Nhấn vào mũi tên');
-                },
-              ),
-              const Gap(10),
-              TravelCardWidget(
-                imagePath: 'assets/images/bgsearch.jpg',
-                date: '28 Tháng 1 2022',
-                title: 'Làng Văn hoá Minangkabau',
-                location: 'Bukittinggi',
-                onPressed: () {
-                  debugPrint('Nhấn vào mũi tên');
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const ItineraryMapScreen()));
                 },
               ),
             ],

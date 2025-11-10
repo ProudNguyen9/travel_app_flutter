@@ -4,7 +4,7 @@ class TourFull {
   final String? description;
   final double? basePriceAdult;
   final double? basePriceChild;
-  final double? durationDays;       
+  final double? durationDays;
   final int? maxParticipants;
   final int? tourTypeId;
   final String? imageUrl;
@@ -12,8 +12,9 @@ class TourFull {
   final DateTime? updatedAt;
   final String? tourTypeName;
   final String? tourTypeCode;
+  List<String>? images;
 
-  const TourFull({
+  TourFull({
     required this.tourId,
     required this.name,
     this.description,
@@ -23,6 +24,7 @@ class TourFull {
     this.maxParticipants,
     this.tourTypeId,
     this.imageUrl,
+    this.images,
     this.createdAt,
     this.updatedAt,
     this.tourTypeName,
@@ -30,14 +32,14 @@ class TourFull {
   });
 
   factory TourFull.fromMap(Map<String, dynamic> j) {
-    double? _toDouble(dynamic v) {
+    double? toDouble(dynamic v) {
       if (v == null) return null;
       if (v is num) return v.toDouble();
       if (v is String) return double.tryParse(v);
       return null;
     }
 
-    DateTime? _toDate(dynamic v) {
+    DateTime? toDate(dynamic v) {
       if (v == null) return null;
       return DateTime.tryParse(v.toString());
     }
@@ -46,14 +48,14 @@ class TourFull {
       tourId: j['tour_id'] as int,
       name: j['name'] ?? "",
       description: j['description'],
-      basePriceAdult: _toDouble(j['base_price_adult']),
-      basePriceChild: _toDouble(j['base_price_child']),
-      durationDays: _toDouble(j['duration_days']),   
+      basePriceAdult: toDouble(j['base_price_adult']),
+      basePriceChild: toDouble(j['base_price_child']),
+      durationDays: toDouble(j['duration_days']),
       maxParticipants: (j['max_participants'] as num?)?.toInt(),
       tourTypeId: (j['tour_type_id'] as num?)?.toInt(),
       imageUrl: j['image_url'],
-      createdAt: _toDate(j['created_at']),
-      updatedAt: _toDate(j['updated_at']),
+      createdAt: toDate(j['created_at']),
+      updatedAt: toDate(j['updated_at']),
       tourTypeName: j['tour_type_name'],
       tourTypeCode: j['tour_type_code'],
     );
@@ -65,7 +67,7 @@ class TourFull {
         'description': description,
         'base_price_adult': basePriceAdult,
         'base_price_child': basePriceChild,
-        'duration_days': durationDays, 
+        'duration_days': durationDays,
         'max_participants': maxParticipants,
         'tour_type_id': tourTypeId,
         'image_url': imageUrl,
@@ -81,7 +83,7 @@ class TourFull {
     String? description,
     double? basePriceAdult,
     double? basePriceChild,
-    double? durationDays,          
+    double? durationDays,
     int? maxParticipants,
     int? tourTypeId,
     String? imageUrl,
@@ -96,7 +98,7 @@ class TourFull {
       description: description ?? this.description,
       basePriceAdult: basePriceAdult ?? this.basePriceAdult,
       basePriceChild: basePriceChild ?? this.basePriceChild,
-      durationDays: durationDays ?? this.durationDays,  
+      durationDays: durationDays ?? this.durationDays,
       maxParticipants: maxParticipants ?? this.maxParticipants,
       tourTypeId: tourTypeId ?? this.tourTypeId,
       imageUrl: imageUrl ?? this.imageUrl,

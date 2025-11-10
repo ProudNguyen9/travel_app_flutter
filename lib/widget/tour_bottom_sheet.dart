@@ -39,8 +39,8 @@ class BottomSheetContent extends StatelessWidget {
 
   List<String> get _defaultImages => const [
         'assets/images/hue.jpg',
-        'assets/images/hue.jpg',
-        'assets/images/hue.jpg',
+        'assets/images/dongnai.jpg',
+        'assets/images/anh-da-lat.jpg',
         'assets/images/hue.jpg',
         'assets/images/hue.jpg',
       ];

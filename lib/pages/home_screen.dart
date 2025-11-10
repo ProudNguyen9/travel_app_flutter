@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:animate_do/animate_do.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -387,7 +389,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   itemCount: 3,
                                   itemBuilder: (context, index) =>
                                       const CardItemForYou(
-                                          loading: true), // khung trắng
+                                    loading: true,
+                                    idTour: 0,
+                                  ), // khung trắng
                                 )
                               : ListView.builder(
                                   itemCount: featuredTours.length,
@@ -400,6 +404,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       tag: t.tourTypeName ?? "Tour",
                                       decription: t.description ?? "Địa điểm",
                                       rating: 4.6,
+                                      idTour: t.tourId,
                                     );
                                   },
                                 ),
@@ -447,6 +452,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       itemBuilder: (context, index) {
                                         final t = suggestedTours[index];
                                         return MayYouLikeItem(
+                                          onTap: () {
+                                            Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                    builder: (_) =>
+                                                        DetailScreen(
+                                                          tourId: t.tourId,
+                                                        )));
+                                          },
                                           size: size,
                                           title: t.name,
                                           duration:
@@ -695,11 +709,13 @@ class CardItemForYou extends StatelessWidget {
     this.tag = 'Leo núi',
     this.decription = 'Nốc nhà Đông Dương',
     this.rating = 4.3,
+    required this.idTour,
   });
 
   final bool loading;
   final String? imageUrl;
   final String fallbackAsset;
+  final int idTour;
   final String title;
   final String tag;
   final String decription;
@@ -719,95 +735,107 @@ class CardItemForYou extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.all(8.0),
-      child: Container(
-        height: 87,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(21),
-          boxShadow: [
-            BoxShadow(
-              color: const Color.fromARGB(255, 108, 108, 108).withOpacity(0.15),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Ảnh (network + placeholder khung, không cache)
-            Padding(
-              padding: const EdgeInsets.only(left: 2.0),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(21),
-                child: SizedBox(
-                  width: 78,
-                  height: 81,
-                  child: loading
-                      ? gray(h: 81, w: 78, r: 21)
-                      : _netImage(imageUrl, fallbackAsset, gray),
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => DetailScreen(
+                      tourId: idTour,
+                    )),
+          );
+        },
+        child: Container(
+          height: 87,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(21),
+            boxShadow: [
+              BoxShadow(
+                color:
+                    const Color.fromARGB(255, 108, 108, 108).withOpacity(0.15),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Ảnh (network + placeholder khung, không cache)
+              Padding(
+                padding: const EdgeInsets.only(left: 2.0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(21),
+                  child: SizedBox(
+                    width: 78,
+                    height: 81,
+                    child: loading
+                        ? gray(h: 81, w: 78, r: 21)
+                        : _netImage(imageUrl, fallbackAsset, gray),
+                  ),
                 ),
               ),
-            ),
-            const Gap(10),
+              const Gap(10),
 
-            // Nội dung
-            Expanded(
-              child: loading
-                  ? _skeletonTexts(gray)
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.lato(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.black26),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            tag,
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
+              // Nội dung
+              Expanded(
+                child: loading
+                    ? _skeletonTexts(gray)
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.lato(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black,
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            const Icon(Icons.description_outlined,
-                                size: 14, color: Colors.black54),
-                            Expanded(
-                              child: Text(
-                                decription,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 13,
-                                  color: Colors.black54,
-                                ),
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.black26),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              tag,
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
-            ),
-          ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              const Icon(Icons.description_outlined,
+                                  size: 14, color: Colors.black54),
+                              Expanded(
+                                child: Text(
+                                  decription,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1027,121 +1055,131 @@ class TabViewChild extends StatelessWidget {
         final cardW = size.width * itemWidthFactor;
         final cardH = size.height * itemHeightFactor;
 
-        return SizedBox(
-          width: cardW,
-          height: cardH,
-          child: Stack(
-            alignment: Alignment.bottomLeft,
-            children: [
-              // Ảnh + bo góc + shadow
-              Hero(
-                tag: '${imageUrl ?? fallbackAsset}#$index',
-                child: Container(
-                  margin:
-                      const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-                  width: cardW,
-                  height: cardH,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x1A000000),
-                        blurRadius: 16,
-                        offset: Offset(0, 8),
+        return InkWell(
+          onTap: () {
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => DetailScreen(
+                          tourId: t.tourId,
+                        )));
+          },
+          child: SizedBox(
+            width: cardW,
+            height: cardH,
+            child: Stack(
+              alignment: Alignment.bottomLeft,
+              children: [
+                // Ảnh + bo góc + shadow
+                Hero(
+                  tag: '${imageUrl ?? fallbackAsset}#$index',
+                  child: Container(
+                    margin:
+                        const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+                    width: cardW,
+                    height: cardH,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x1A000000),
+                          blurRadius: 16,
+                          offset: Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: _buildImage(
+                      url: imageUrl,
+                      width: cardW,
+                      height: cardH,
+                    ),
+                  ),
+                ),
+
+                // Gradient nền dày để chứa 2 hàng chip thoải mái
+                Positioned(
+                  left: 6,
+                  right: 6,
+                  bottom: 10,
+                  child: Container(
+                    height: cardH * 0.60,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      gradient: const LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [
+                          Color.fromARGB(210, 0, 0, 0),
+                          Color.fromARGB(0, 0, 0, 0),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Badge loại tour (trái trên) – cũng dùng chip style thống nhất
+                Positioned(
+                  left: 16,
+                  top: 16,
+                  child: _chip(
+                    text: location,
+                    icon: Icons.place,
+                  ),
+                ),
+
+                // Khối text + chips
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: 16,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Tiêu đề
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          height: 1.1,
+                        ),
+                      ),
+
+                      const Gap(10),
+
+                      // ✅ TẦNG 1: CHỈ GIÁ
+                      _chip(
+                        text:
+                            'Từ ${Formatter.vnd(priceFrom).replaceFirst('đ', ' đ')}',
+                        icon: Icons.payments_rounded,
+                      ),
+
+                      const Gap(10),
+
+                      // ✅ TẦNG 2: NGÀY + SAO
+                      Row(
+                        children: [
+                          _chip(
+                            text: daysLabel,
+                            icon: Icons.schedule,
+                          ),
+                          const Gap(12),
+                          _chip(
+                            text: rating.toStringAsFixed(1),
+                            icon: Icons.star_rounded,
+                            iconColor: Colors.amber,
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  clipBehavior: Clip.antiAlias,
-                  child: _buildImage(
-                    url: imageUrl,
-                    width: cardW,
-                    height: cardH,
-                  ),
-                ),
-              ),
-
-              // Gradient nền dày để chứa 2 hàng chip thoải mái
-              Positioned(
-                left: 6,
-                right: 6,
-                bottom: 10,
-                child: Container(
-                  height: cardH * 0.60,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    gradient: const LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      colors: [
-                        Color.fromARGB(210, 0, 0, 0),
-                        Color.fromARGB(0, 0, 0, 0),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-              // Badge loại tour (trái trên) – cũng dùng chip style thống nhất
-              Positioned(
-                left: 16,
-                top: 16,
-                child: _chip(
-                  text: location,
-                  icon: Icons.place,
-                ),
-              ),
-
-              // Khối text + chips
-              Positioned(
-                left: 16,
-                right: 16,
-                bottom: 16,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Tiêu đề
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        height: 1.1,
-                      ),
-                    ),
-
-                    const Gap(10),
-
-                    // ✅ TẦNG 1: CHỈ GIÁ
-                    _chip(
-                      text:
-                          'Từ ${Formatter.vnd(priceFrom).replaceFirst('đ', ' đ')}',
-                      icon: Icons.payments_rounded,
-                    ),
-
-                    const Gap(8),
-
-                    // ✅ TẦNG 2: NGÀY + SAO
-                    Row(
-                      children: [
-                        _chip(
-                          text: daysLabel,
-                          icon: Icons.schedule,
-                        ),
-                        const Gap(8),
-                        _chip(
-                          text: rating.toStringAsFixed(1),
-                          icon: Icons.star_rounded,
-                          iconColor: Colors.amber,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              )
-            ],
+                )
+              ],
+            ),
           ),
         );
       },
@@ -1187,28 +1225,80 @@ class TabViewChild extends StatelessWidget {
     required String text,
     required IconData icon,
     Color iconColor = Colors.white,
+    bool fancy = false, // 👈 thêm tham số mới
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: const Color(0x33FFFFFF),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0x55FFFFFF), width: 1.2),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: iconColor),
-          const Gap(6),
-          Text(
-            text,
-            style: GoogleFonts.poppins(
-              color: Colors.white,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
+    if (!fancy) {
+      // ==== Loại CŨ của bạn ====
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: const Color(0x33FFFFFF),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: const Color(0x55FFFFFF), width: 1.2),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: iconColor),
+            const Gap(6),
+            Text(
+              text,
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+              ),
             ),
+          ],
+        ),
+      );
+    }
+
+    // ==== Loại MỚI (glass + blur + shadow) ====
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(999),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            gradient: LinearGradient(
+              colors: [
+                Colors.white.withOpacity(0.20),
+                Colors.white.withOpacity(0.08),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.45),
+              width: 1.4,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.25),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
-        ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: iconColor),
+              const Gap(6),
+              Text(
+                text,
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

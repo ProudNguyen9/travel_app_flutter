@@ -228,7 +228,7 @@ class _ItineraryMapScreenState extends State<ItineraryMapScreen>
                   ),
                   const Gap(60),
                   Text(
-                    'Lịch trình tour',
+                    'Lịch trình Tour',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.lato(
                       fontSize: 20,

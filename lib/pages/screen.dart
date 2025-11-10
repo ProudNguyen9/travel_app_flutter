@@ -19,4 +19,7 @@ export 'edit_profile_screen.dart';
 export 'destination_list_screen.dart';
 export 'favorite_places_page.dart';
 export 'bookings_history_screen.dart';
+export 'booking_confirmed_screen.dart';
+export 'booking_screen.dart';
+export 'price_detail_screen.dart';
 

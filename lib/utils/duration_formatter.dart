@@ -17,3 +17,15 @@ String formatDuration(double? d) {
   if (nights <= 0) return "$days ngày";
   return "$days ngày $nights đêm";
 }
+int nightsFromDuration(double? d) {
+  if (d == null) return 0;
+  return ((d % 1) * 10).round();
+}
+String formatDurationLabel(double? d) {
+  if (d == null) return "Lịch trình linh hoạt";
+  final int days = d.floor();
+  final int nights = ((d % 1) * 10).round();
+
+  if (nights <= 0) return "$days ngày";
+  return "$days ngày $nights đêm";
+}

@@ -34,26 +34,57 @@ class TourService {
     return _cachedTours!;
   }
 
-  /// 🟦 Lấy 1 tour theo ID (dùng cache nếu có)
-  Future<TourFull?> fetchTourById(int tourId) async {
-    // Nếu đã có danh sách cache → tìm trong RAM
+  // 🟦 Lấy 1 tour theo ID (dùng cache nếu có) + luôn tải ảnh mới nhất
+  Future<TourFull?> fetchTourForDetailById(int tourId) async {
+    TourFull? tour;
+
+    // 1) Tìm trong cache nếu có
     if (_cachedTours != null) {
       try {
-        return _cachedTours!.firstWhere((t) => t.tourId == tourId);
+        tour = _cachedTours!.firstWhere((t) => t.tourId == tourId);
       } catch (_) {}
     }
 
-    // Nếu chưa có cache → gọi API 1 lần để tạo cache
-    await fetchAllTours();
-
-    try {
-      return _cachedTours!.firstWhere((t) => t.tourId == tourId);
-    } catch (_) {
-      return null;
+    // 2) Nếu chưa có → tạo cache
+    if (tour == null) {
+      await fetchAllTours();
+      try {
+        tour = _cachedTours!.firstWhere((t) => t.tourId == tourId);
+      } catch (_) {
+        return null;
+      }
     }
+
+    // 3) Luôn tải list ảnh mới nhất từ VIEW
+    try {
+      final images = await _fetchImagesByTourId(tourId);
+      tour.images = images; // gán trực tiếp (images KHÔNG final)
+    } catch (_) {
+      // optional: log
+    }
+
+    return tour;
   }
 
-  /// 🧹 Reset cache (ví dụ khi logout)
+  /// 🖼️ Lấy danh sách ảnh theo tour_id từ VIEW (tour_locations → locations)
+  Future<List<String>> _fetchImagesByTourId(int tourId) async {
+    final rows = await Supabase.instance.client
+        .from('vw_tour_images')
+        .select('image_url')
+        .eq('tour_id', tourId);
+
+    // rows là List<dynamic>
+    final urls = rows
+        .map<String?>((r) => r['image_url'] as String?)
+        .where((u) => u != null && u.trim().isNotEmpty)
+        .map((u) => u!.trim())
+        .toSet() // khử trùng lặp
+        .toList();
+
+    return urls;
+  }
+
+  ///  Reset cache (ví dụ khi logout)
   void clearCache() {
     _cachedTours = null;
     _lastFetch = null;

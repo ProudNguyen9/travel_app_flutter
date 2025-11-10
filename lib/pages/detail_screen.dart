@@ -1,10 +1,20 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:travel_app/data/data.dart'; // TourService + TourFull
+import 'package:travel_app/data/services/favorite_tour_service.dart';
+import 'package:travel_app/pages/booking_screen.dart';
+import 'package:travel_app/utils/formatter.dart'; // Formatter.vnd
 
 class DetailScreen extends StatefulWidget {
-  const DetailScreen({super.key});
+  const DetailScreen({
+    super.key,
+    required this.tourId,
+  });
+
+  final int tourId;
 
   @override
   State<DetailScreen> createState() => _DetailScreenState();
@@ -13,16 +23,13 @@ class DetailScreen extends StatefulWidget {
 class _DetailScreenState extends State<DetailScreen> {
   static const primary = Color(0xFF24BAEC);
 
-  // TODO: đổi thành ảnh của bạn
-  final List<String> _images = [
-    'assets/images/dongnai.jpg',
-    'assets/images/nhatrang.jpg',
-    'assets/images/hue.jpg',
-    'assets/images/anh-da-lat.jpg',
-    'assets/images/dongnai.jpg',
-  ];
-
+  List<String> _images = [];
+  TourFull? _tour;
   int _selectedIndex = 0;
+  bool _loading = true;
+
+  // trạng thái mô tả 80% / full
+  bool _expanded = false;
 
   TextStyle lato(double s,
           {FontWeight w = FontWeight.w400,
@@ -31,10 +38,112 @@ class _DetailScreenState extends State<DetailScreen> {
       GoogleFonts.lato(fontSize: s, fontWeight: w, color: c, height: h);
 
   @override
+  void initState() {
+    super.initState();
+    _loadData(widget.tourId);
+  }
+
+  /// Load tour + ảnh theo ID
+  Future<void> _loadData(int tourId) async {
+    try {
+      final svc = TourService.instance; // singleton
+      final tour = await svc.fetchTourForDetailById(tourId); // TourFull?
+
+      // Ảnh: ưu tiên list images, sau đó mainImage/imageUrl, cuối cùng placeholder
+      List<String> images =
+          (tour?.images ?? []).where((e) => e.trim().isNotEmpty).toList();
+
+      final main = (tour?.imageUrl ?? tour?.imageUrl);
+      if (images.isEmpty && (main != null && main.trim().isNotEmpty)) {
+        images = [main];
+      }
+      if (images.isEmpty) {
+        images = ['assets/images/placeholder.jpg'];
+      }
+
+      setState(() {
+        _tour = tour;
+        _images = images;
+        _selectedIndex = 0;
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _tour = null;
+        _images = ['assets/images/placeholder.jpg'];
+        _selectedIndex = 0;
+        _loading = false;
+      });
+    }
+  }
+
+  /// Tự động chọn đúng ImageProvider theo path
+  ImageProvider _provider(String path) {
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return NetworkImage(path);
+    }
+    if (path.startsWith('/') || path.startsWith('C:\\')) {
+      return FileImage(File(path));
+    }
+    return AssetImage(path);
+  }
+
+  String _priceText(TourFull? t) {
+    if (t == null) return 'Giá cập nhật sau';
+    final price = t.basePriceAdult;
+    if (price == null) return 'Giá cập nhật sau';
+    return '${Formatter.vnd(price)}/người';
+  }
+
+  /// Hiển thị 80% mô tả, bấm để Đọc thêm / Thu gọn
+  Widget _description(String desc) {
+    final int cutLen = (desc.length * 0.6).floor();
+    final bool needMore = desc.length > cutLen;
+    final String preview = needMore ? desc.substring(0, cutLen) : desc;
+
+    return GestureDetector(
+      onTap: () {
+        if (needMore) setState(() => _expanded = !_expanded);
+      },
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(
+              text: _expanded ? desc : preview,
+              style: lato(14, c: Colors.black54, h: 1.5),
+            ),
+            if (needMore && !_expanded)
+              TextSpan(
+                text: '  ...Đọc thêm',
+                style: lato(14, w: FontWeight.w700, c: primary),
+              ),
+            if (needMore && _expanded)
+              TextSpan(
+                text: '  Thu gọn',
+                style: lato(13, w: FontWeight.w700, c: primary),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final double imageWidth = size.width - 32;
     final double imageHeight = size.height * 0.3;
+    final tourt = _tour;
+    final title = (_tour?.name != null && _tour!.name.toString().isNotEmpty)
+        ? _tour!.name.toString()
+        : '—';
+    // nếu bạn có locationName thì thay ở đây; tạm dùng tourTypeName làm subtitle
+    final location =
+        _tour?.tourTypeName ?? _tour?.tourTypeName ?? 'Đang cập nhật địa điểm';
+    final desc = (_tour?.description?.isNotEmpty ?? false)
+        ? _tour!.description!
+        : 'Thông tin đang cập nhật…';
+    final priceText = _priceText(_tour);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
@@ -62,17 +171,19 @@ class _DetailScreenState extends State<DetailScreen> {
                 width: imageWidth,
                 height: imageHeight,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: primary, width: 2),
-                  image: DecorationImage(
-                    image: AssetImage(_images[_selectedIndex]),
-                    fit: BoxFit.cover,
-                  ),
+                  borderRadius: BorderRadius.circular(21),
+                  color: _loading ? Colors.white : null, // khung trắng khi load
+                  image: _loading
+                      ? null
+                      : DecorationImage(
+                          image: _provider(_images[_selectedIndex]),
+                          fit: BoxFit.cover,
+                        ),
                 ),
               ),
               const SizedBox(height: 10),
 
-              // ==== TIỆN ÍCH + RATING ====
+              // ==== TIỆN ÍCH + RATING (demo) ====
               Row(
                 children: [
                   _amenity(icon: Icons.wifi, text: 'Miễn phí Wifi'),
@@ -89,24 +200,30 @@ class _DetailScreenState extends State<DetailScreen> {
               ),
               const SizedBox(height: 12),
 
-              // ==== TIÊU ĐỀ ====
+              // ==== TIÊU ĐỀ (tên tour) ====
               Row(
                 children: [
                   Expanded(
-                      child: Text('Vũng Tàu',
-                          style:
-                              lato(22, w: FontWeight.w600, c: Colors.black))),
+                    child: Text(
+                      title,
+                      style: lato(18, w: FontWeight.w600, c: Colors.black),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 6),
 
+              // ==== ĐỊA ĐIỂM / LOẠI TOUR ====
               Row(
                 children: [
-                  const Icon(Icons.place_rounded, size: 16, color: primary),
+                  const Icon(Icons.type_specimen_outlined,
+                      size: 16, color: primary),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      'Bãi Sau, Bà Rịa – Vũng Tàu',
+                      location,
                       style: lato(13.5, c: Colors.black54),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -116,31 +233,22 @@ class _DetailScreenState extends State<DetailScreen> {
               ),
               const SizedBox(height: 16),
 
+              // ==== Mô tả + Giá ====
               Row(
                 children: [
                   Text('Mô tả',
                       style: lato(16, w: FontWeight.w700, c: primary)),
                   const Spacer(),
-                  Text('400.000VND/người',
-                      style: lato(16, w: FontWeight.w700, c: Colors.black87)),
+                  Text(
+                    priceText,
+                    style: lato(16, w: FontWeight.w700, c: Colors.black87),
+                  ),
                 ],
               ),
               const SizedBox(height: 10),
 
-              Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(
-                      text:
-                          'Each of the 26 houses is a suite with separate living and bedrooms, as well as personal butler, private pool and ocean views. In every house guests can enjoy free wifi, complimentary water, tea, coffee and soft drinks, bottle of champagne on arrival ',
-                      style: lato(14, c: Colors.black54, h: 1.5),
-                    ),
-                    TextSpan(
-                        text: 'Đọc thêm',
-                        style: lato(13, w: FontWeight.w700, c: primary)),
-                  ],
-                ),
-              ),
+              // ==== MÔ TẢ: 80% + Đọc thêm ====
+              _description(desc),
 
               const SizedBox(height: 16),
 
@@ -158,20 +266,23 @@ class _DetailScreenState extends State<DetailScreen> {
                 height: 80,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
-                  itemCount: _images.length,
+                  itemCount: _loading ? 5 : _images.length,
                   separatorBuilder: (_, __) => const SizedBox(width: 12),
                   itemBuilder: (context, i) {
-                    final active = i == _selectedIndex;
+                    final active = !_loading && i == _selectedIndex;
                     return GestureDetector(
-                      onTap: () => setState(() => _selectedIndex = i),
+                      onTap: _loading
+                          ? null
+                          : () => setState(() => _selectedIndex = i),
                       child: Container(
                         width: 80,
                         height: 80,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                              color: active ? primary : Colors.transparent,
-                              width: 2),
+                            color: active ? primary : Colors.transparent,
+                            width: 2,
+                          ),
                           boxShadow: active
                               ? [
                                   BoxShadow(
@@ -181,10 +292,15 @@ class _DetailScreenState extends State<DetailScreen> {
                                   ),
                                 ]
                               : null,
-                          image: DecorationImage(
-                            image: AssetImage(_images[i]),
-                            fit: BoxFit.cover,
-                          ),
+                          color: _loading
+                              ? Colors.white
+                              : null, // ô trắng khi load
+                          image: _loading
+                              ? null
+                              : DecorationImage(
+                                  image: _provider(_images[i]),
+                                  fit: BoxFit.cover,
+                                ),
                         ),
                       ),
                     );
@@ -202,9 +318,21 @@ class _DetailScreenState extends State<DetailScreen> {
                       width: 164,
                       height: 54,
                       child: ElevatedButton(
-                        onPressed: () {},
+                        onPressed: _loading
+                            ? null
+                            : () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => BookingTourScreen(
+                                      tour: tourt!,
+                                    ),
+                                  ),
+                                );
+                              },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: primary,
+                          disabledBackgroundColor: primary.withOpacity(.35),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(34)),
                           elevation: 0,
@@ -218,24 +346,56 @@ class _DetailScreenState extends State<DetailScreen> {
                     ),
                     const Gap(10),
                     SizedBox(
-                      width: 140,
+                      width: 150,
                       height: 54,
                       child: OutlinedButton(
-                        onPressed: () {},
+                        onPressed: _loading
+                            ? null
+                            : () async {
+                                final client = Supabase.instance.client;
+                                final authUser = client.auth.currentUser;
+                                if (authUser == null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            'Bạn cần đăng nhập để thêm yêu thích.')),
+                                  );
+                                  return;
+                                }
+
+                                try {
+                                  await FavoriteTourService.instance
+                                      .addFavoriteByAuth(
+                                          authUser.id, tourt!.tourId);
+                                  // (tuỳ chọn) cập nhật UI nếu bạn có danh sách id yêu thích:
+                                  // setState(() => _favIds.add(t.tourId));
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content: Text(
+                                            'Đã thêm "${tourt.name}" vào yêu thích ❤️')),
+                                  );
+                                } catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content:
+                                            Text('Lỗi khi thêm yêu thích: $e')),
+                                  );
+                                }
+                              },
                         style: OutlinedButton.styleFrom(
-                          side: const BorderSide(
-                              color: primary, width: 2), // viền
+                          side: const BorderSide(color: primary, width: 2),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(34),
                           ),
-                          foregroundColor: primary, // màu chữ & ripple
+                          foregroundColor: primary,
                         ),
                         child: Text(
                           'Yêu thích',
                           style: GoogleFonts.poppins(
                             fontSize: 16,
                             fontWeight: FontWeight.w400,
-                            color: primary, // chữ màu primary
+                            color: primary,
                           ),
                         ),
                       ),
@@ -243,7 +403,7 @@ class _DetailScreenState extends State<DetailScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+              const Gap(10)
             ],
           ),
         ]),
@@ -253,7 +413,6 @@ class _DetailScreenState extends State<DetailScreen> {
 }
 
 // ===== Widgets phụ =====
-
 Widget _amenity({required IconData icon, required String text}) {
   return Row(
     children: [
@@ -262,7 +421,10 @@ Widget _amenity({required IconData icon, required String text}) {
       Text(
         text,
         style: GoogleFonts.lato(
-            fontSize: 12.5, color: Colors.black87, fontWeight: FontWeight.w500),
+          fontSize: 12.5,
+          color: Colors.black87,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     ],
   );

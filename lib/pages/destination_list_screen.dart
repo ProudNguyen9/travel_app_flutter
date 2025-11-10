@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:travel_app/data/models/tour_full.dart';
 import 'package:travel_app/data/services/tour_service.dart';
 import 'package:travel_app/utils/duration_formatter.dart'; // <-- dùng formatDuration
+import 'package:travel_app/pages/detail_screen.dart'; // <-- thêm: mở chi tiết
 
 class DestinationListScreen extends StatelessWidget {
   const DestinationListScreen({super.key});
@@ -74,13 +75,23 @@ class DestinationListScreen extends StatelessWidget {
                 if (popular.isEmpty) _emptyCard("Chưa có tour phổ biến"),
                 ...popular.map((t) => Padding(
                       padding: const EdgeInsets.only(bottom: 12),
-                      child: _popularTripCard(
-                        imageUrl: t.imageUrl,
-                        fallbackAsset: "assets/images/splash1.png",
-                        title: t.name,
-                        date: formatDuration(t.durationDays), // ✅ dùng util
-                        rating: 4.8,
-                        joined: t.maxParticipants ?? 0,
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => DetailScreen(tourId: t.tourId),
+                            ),
+                          );
+                        },
+                        child: _popularTripCard(
+                          imageUrl: t.imageUrl,
+                          fallbackAsset: "assets/images/splash1.png",
+                          title: t.name,
+                          date: formatDuration(t.durationDays), // ✅ dùng util
+                          rating: 4.8,
+                          joined: t.maxParticipants ?? 0,
+                        ),
                       ),
                     )),
 
@@ -116,14 +127,25 @@ class DestinationListScreen extends StatelessWidget {
                         ),
                         itemBuilder: (context, index) {
                           final t = liked[index];
-                          return _favoriteCard(
-                            title: t.name,
-                            location:
-                                t.tourTypeName ?? t.tourTypeCode ?? "Tour",
-                            imageUrl: t.imageUrl,
-                            fallbackAsset: index.isEven
-                                ? "assets/images/splash1.png"
-                                : "assets/images/splash2.png",
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      DetailScreen(tourId: t.tourId),
+                                ),
+                              );
+                            },
+                            child: _favoriteCard(
+                              title: t.name,
+                              location:
+                                  t.tourTypeName ?? t.tourTypeCode ?? "Tour",
+                              imageUrl: t.imageUrl,
+                              fallbackAsset: index.isEven
+                                  ? "assets/images/splash1.png"
+                                  : "assets/images/splash2.png",
+                            ),
                           );
                         },
                       );
