@@ -84,6 +84,50 @@ class TourService {
     return urls;
   }
 
+  Future<List<String>> fetchDistinctTourTypes() async {
+    final rows = await _db
+        .from(_view)
+        .select('tour_type_name')
+        .not('tour_type_name', 'is', null) // bỏ null
+        .order('tour_type_name', ascending: true);
+
+    // rows: List<dynamic>
+    final types = (rows as List)
+        .map((e) => (e['tour_type_name'] ?? '').toString().trim())
+        .where((s) => s.isNotEmpty)
+        .toSet() // unique
+        .toList();
+
+    return types;
+  }
+
+  Future<List<String>> fetchDistinctDurations() async {
+    final rows = await _db
+        .from(_view)
+        .select('duration_days')
+        .not('duration_days', 'is', null)
+        .order('duration_days', ascending: true);
+
+    final durations = (rows as List)
+        .map((e) {
+          final raw = e['duration_days'];
+          if (raw == null) return '';
+          final doubleVal = double.tryParse(raw.toString()) ?? 0;
+          final days = doubleVal.floor();
+          final nights = ((doubleVal - days) * 10).round();
+
+          if (days > 0 && nights > 0) return '$days ngày $nights đêm';
+          if (days > 0) return '$days ngày';
+          if (nights > 0) return '$nights đêm';
+          return 'Không xác định';
+        })
+        .where((s) => s.isNotEmpty && s != 'Không xác định')
+        .toSet()
+        .toList();
+
+    return durations;
+  }
+
   ///  Reset cache (ví dụ khi logout)
   void clearCache() {
     _cachedTours = null;

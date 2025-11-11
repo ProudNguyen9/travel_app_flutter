@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:travel_app/pages/discount_picker_screen.dart';
 import 'package:travel_app/utils/extensions.dart';
 
 import 'screen.dart';
@@ -118,7 +119,10 @@ class ProfileScreen extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const EditProfileScreen(),
+                          builder: (_) => DiscountPickerScreen(
+                            tourId: 9,
+                            travelDate: DateTime.now(),
+                          ),
                         ),
                       );
                     },
