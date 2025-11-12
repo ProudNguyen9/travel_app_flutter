@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:travel_app/data/models/tour_full.dart';
+import 'package:travel_app/data/services/profile_service.dart';
 import 'package:travel_app/data/services/tour_pricing_service.dart';
 import 'package:travel_app/pages/price_detail_screen.dart';
 
@@ -97,12 +98,14 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
   int get _vatAmount => (_peopleSubtotal * (_vatPercent / 100)).round();
   int get _grandTotal => _peopleSubtotal + _vatAmount - _discountVnd;
 
-  String _peopleLine() => '$youth Trẻ em, $adult Người lớn, $senior Người già';
+  String _peopleLine() =>
+      '$youth Trẻ em, $adult Người lớn, $senior Người cao tuổi';
 
   // UI-only validators
   bool _isValidEmail(String s) =>
       RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(s);
   bool _isValidPhone(String s) => RegExp(r'^0\d{9,10}$').hasMatch(s);
+// call data user
 
   void _updateBookerInfo() {
     final ok = _nameCtl.text.trim().length >= 2 &&
@@ -115,16 +118,63 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
             : 'Thông tin chưa hợp lệ.')));
   }
 
+  Future<void> loadAndFillBookerInfo() async {
+    final profile = await ProfileService().getCurrentUserProfile();
+
+    if (profile == null) return;
+
+    // Gán dữ liệu vào TextField
+    _nameCtl.text = profile.name ?? '';
+    _phoneCtl.text = profile.phone ?? '';
+    _emailCtl.text = profile.email ?? '';
+    final hasName = (profile.name?.trim().isNotEmpty ?? false);
+    final hasPhone = (profile.phone?.trim().isNotEmpty ?? false);
+    final hasEmail = (profile.email?.trim().isNotEmpty ?? false);
+
+    bool check = hasName && hasPhone && hasEmail;
+    if (check != false) {
+      _profileOK = true;
+    }
+    setState(() {}); // cập nhật UI
+  }
+
+  //call data user
+
   void _inc(String type) => setState(() {
         if (type == 'youth') youth++;
         if (type == 'adult') adult++;
         if (type == 'senior') senior++;
       });
 
+  void _toast(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
   void _dec(String type) => setState(() {
-        if (type == 'youth' && youth > 0) youth--;
-        if (type == 'adult' && adult > 1) adult--; // giữ tối thiểu 1 người lớn
-        if (type == 'senior' && senior > 0) senior--;
+        if (type == 'youth' && youth > 0) {
+          youth--;
+        }
+
+        if (type == 'adult' && adult > 0) {
+          final guardiansAfter =
+              (adult - 1) + senior; // người lớn + người già còn lại
+          if (guardiansAfter >= 1) {
+            adult--;
+          } else {
+            _toast(
+                'Vui lòng đảm bảo có ít nhất một người lớn hoặc một người cao tuổi trong đoàn.');
+          }
+        }
+
+        if (type == 'senior' && senior > 0) {
+          final guardiansAfter = adult + (senior - 1);
+          if (guardiansAfter >= 1) {
+            senior--;
+          } else {
+            _toast(
+                'Vui lòng đảm bảo có ít nhất một người lớn hoặc một người cao tuổi trong đoàn.');
+          }
+        }
       });
 
   // ====== Mở màn hình bảng giá chi tiết (main hình giá) ======
@@ -207,6 +257,7 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
 
     _pricing = TourPricingService(Supabase.instance.client);
     _loadUnitPrices();
+    loadAndFillBookerInfo();
   }
 
   @override
@@ -219,6 +270,7 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ignore: unused_local_variable
     const divider = Divider(height: 1, color: Color(0xFFE8E8E8));
     final tourTitle = widget.tour.name;
     final tourImage = widget.tour.imageUrl;
@@ -239,13 +291,6 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
               const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          IconButton(
-            tooltip: 'Làm mới đơn giá',
-            onPressed: _loadingPrices ? null : _loadUnitPrices,
-            icon: const Icon(Icons.refresh),
-          )
-        ],
       ),
       body: Column(
         children: [
@@ -336,34 +381,46 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
                           label: 'Họ tên',
                           controller: _nameCtl,
                           keyboardType: TextInputType.name,
-                          hint: 'VD: Nguyễn Văn A'),
-                      const Gap(10),
+                          hint: 'Vui lòng cập nhật !'),
+                      const Gap(5),
                       _TextFieldRow(
-                          label: 'Số điện thoại',
+                          label: 'SDT',
                           controller: _phoneCtl,
                           keyboardType: TextInputType.phone,
-                          hint: 'VD: 0912345678'),
-                      const Gap(10),
+                          hint: 'Vui lòng cập nhật !'),
+                      const Gap(5),
                       _TextFieldRow(
                           label: 'Email',
                           controller: _emailCtl,
                           keyboardType: TextInputType.emailAddress,
-                          hint: 'VD: email@domain.com'),
-                      const Gap(12),
+                          hint: 'Vui lòng cập nhật !'),
+                      const Gap(5),
                       Align(
                         alignment: Alignment.centerRight,
                         child: ElevatedButton.icon(
                           onPressed: _updateBookerInfo,
-                          icon: const Icon(Icons.save_rounded, size: 18),
-                          label: Text('Cập nhật',
-                              style: GoogleFonts.lato(
-                                  fontWeight: FontWeight.w600)),
+                          icon: const Icon(Icons.save_rounded,
+                              size: 18, color: Colors.white),
+                          label: Text(
+                            'Cập nhật',
+                            style: GoogleFonts.lato(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                              color: Colors.white,
+                            ),
+                          ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _profileOK
-                                ? const Color(0xFF14AE5C)
-                                : const Color(0xFF24BAEC),
+                            backgroundColor:
+                                const Color(0xFF24BAEC), // màu xanh Travel
+                            elevation: 1,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 10,
+                            ),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
+                              borderRadius:
+                                  BorderRadius.circular(14), // bo tròn đẹp hơn
+                            ),
                           ),
                         ),
                       ),
@@ -377,9 +434,9 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
 
                 const Gap(16),
 
-                // ===== Thông tin chuyến đi =====
+                // ===== Thông tin hành khác =====
                 _SectionCard(
-                  title: 'Thông tin chuyến đi',
+                  title: 'Số lượng hành khách',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -389,30 +446,38 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
                       const Gap(12),
                       const Divider(height: 1),
                       const Gap(12),
+                      // Trẻ em: bình thường
                       _CounterRow(
-                          label: 'Trẻ em',
-                          value: youth,
-                          onMinus: () => _dec('youth'),
-                          onPlus: () => _inc('youth'),
-                          accentColor: const Color(0xFF24BAEC),
-                          emoji: '🧒'),
-                      const Gap(8),
+                        label: 'Trẻ em (5-17)',
+                        value: youth,
+                        onMinus: () => _dec('youth'),
+                        onPlus: () => _inc('youth'),
+                        accentColor: const Color(0xFF24BAEC),
+                        emoji: '🧒',
+                      ),
+                      const Gap(5),
+                      // Người lớn: nếu không có người già -> tối thiểu 1 người lớn
                       _CounterRow(
-                          label: 'Người lớn',
-                          value: adult,
-                          onMinus: () => _dec('adult'),
-                          onPlus: () => _inc('adult'),
-                          accentColor: const Color(0xFF14AE5C),
-                          emoji: '🧍',
-                          minValue: 1),
-                      const Gap(8),
+                        label: 'Người lớn (18-59)',
+                        value: adult,
+                        onMinus: () => _dec('adult'),
+                        onPlus: () => _inc('adult'),
+                        accentColor: const Color(0xFF14AE5C),
+                        emoji: '🧍',
+                        //minValue: (senior == 0) ? 1 : 0,
+                      ),
+                      const Gap(5),
+
+                      // Người già: nếu không có người lớn -> tối thiểu 1 người già
                       _CounterRow(
-                          label: 'Người già',
-                          value: senior,
-                          onMinus: () => _dec('senior'),
-                          onPlus: () => _inc('senior'),
-                          accentColor: const Color(0xFFFFA726),
-                          emoji: '👵'),
+                        label: 'Người cao tuổi (≥ 60)',
+                        value: senior,
+                        onMinus: () => _dec('senior'),
+                        onPlus: () => _inc('senior'),
+                        accentColor: const Color(0xFFFFA726),
+                        emoji: '👵',
+                        //minValue: (adult == 0) ? 1 : 0,
+                      ),
                     ],
                   ),
                 ),
@@ -429,15 +494,7 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _PricePill(
-                        label: 'Người lớn',
-                        amount: _unitAdult,
-                        fmt: _fmt,
-                        icon: Icons.person,
-                        color: const Color(0xFF14AE5C),
-                      ),
-                      const Gap(8),
-                      _PricePill(
-                        label: 'Trẻ em',
+                        label: 'Trẻ em (5-17)',
                         amount: _unitChild,
                         fmt: _fmt,
                         icon: Icons.child_care,
@@ -445,7 +502,15 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
                       ),
                       const Gap(8),
                       _PricePill(
-                        label: 'Người già',
+                        label: 'Người lớn (18-59)',
+                        amount: _unitAdult,
+                        fmt: _fmt,
+                        icon: Icons.person,
+                        color: const Color(0xFF14AE5C),
+                      ),
+                      const Gap(8),
+                      _PricePill(
+                        label: 'Người cao tuổi (≥ 60)',
                         amount: _unitSenior,
                         fmt: _fmt,
                         icon: Icons.elderly,
@@ -495,7 +560,7 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
                       if (senior > 0)
                         _RowPrice(
                           left:
-                              'Người già ($senior × ${_fmt.format(_unitSenior)})',
+                              'Người cao tuổi ($senior × ${_fmt.format(_unitSenior)})',
                           amount: _seniorTotal,
                           fmt: _fmt,
                         ),
@@ -653,7 +718,7 @@ class _CounterRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textStyle = GoogleFonts.lato(
-        fontSize: 15,
+        fontSize: 13,
         color: const Color(0xFF1B1E28),
         fontWeight: FontWeight.w700);
     final pill = Container(
@@ -851,37 +916,63 @@ class _TextFieldRow extends StatelessWidget {
   final TextInputType keyboardType;
   final String? hint;
 
-  const _TextFieldRow(
-      {required this.label,
-      required this.controller,
-      required this.keyboardType,
-      this.hint});
+  const _TextFieldRow({
+    required this.label,
+    required this.controller,
+    required this.keyboardType,
+    this.hint,
+  });
+
+  IconData _getIcon() {
+    if (keyboardType == TextInputType.phone) return Icons.phone_rounded;
+    if (keyboardType == TextInputType.emailAddress) return Icons.email_rounded;
+    return Icons.person_rounded;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Row(children: [
-      SizedBox(
-          width: 100,
-          child: Text(label,
-              style: GoogleFonts.lato(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF1B1E28)))),
-      const SizedBox(width: 10),
-      Expanded(
-        child: TextField(
-          controller: controller,
-          keyboardType: keyboardType,
-          decoration: InputDecoration(
-            hintText: hint,
-            isDense: true,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          ),
-        ),
+    const primary = Color(0xFF24BAEC);
+
+    return Container(
+      height: 46,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F9FC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-    ]);
+      child: Row(
+        children: [
+          Icon(_getIcon(), size: 18, color: primary.withOpacity(0.85)),
+          const SizedBox(width: 10),
+
+          // Text
+          Expanded(
+            child: TextField(
+              readOnly: true,
+              controller: controller,
+              keyboardType: keyboardType,
+              style: GoogleFonts.lato(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF1B1E28),
+              ),
+              decoration: InputDecoration(
+                hintText: hint ?? label,
+                hintStyle: GoogleFonts.lato(
+                  fontSize: 14,
+                  color: const Color(0xFF9BA5B7),
+                ),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -892,23 +983,35 @@ class _WarningBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF2F2),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFF4C7C7)),
+        color: const Color(0xFFFFF7F5), // pastel nhẹ hơn
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFF5D1C8)),
       ),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Icon(Icons.error_outline, color: Color(0xFFE5484D)),
-        const SizedBox(width: 8),
-        Expanded(
-            child: Text(message,
-                style: GoogleFonts.lato(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFFE5484D)))),
-      ]),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.error_outline,
+            color: Color(0xFFE5484D),
+            size: 18, // nhỏ hơn
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: GoogleFonts.lato(
+                fontSize: 12.5, // nhỏ + gọn
+                fontWeight: FontWeight.w600,
+                height: 1.3, // line-height đẹp
+                color: const Color(0xFFE5484D),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -18,12 +19,13 @@ class DiscountPickerScreen extends StatefulWidget {
     required this.tourId,
     required this.travelDate,
     this.initialCode,
+    required this.people,
   });
 
   final int tourId;
   final DateTime travelDate;
   final String? initialCode;
-
+  final int people;
   @override
   State<DiscountPickerScreen> createState() => _DiscountPickerScreenState();
 }
@@ -43,7 +45,7 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
   bool _validating = false;
   String? _error;
 
-  String _filter = 'all'; // all | percent | amount | freeship
+  String _filter = 'all'; // all | percent | amount |
 
   @override
   void initState() {
@@ -66,24 +68,36 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
       _loading = true;
       _error = null;
     });
+
     try {
-      final list = await _svc.fetchValidDiscounts(
+      // ✅ Lấy danh sách giảm giá (cả hidden)
+      final allList = await _svc.fetchValidDiscounts(
         tourId: widget.tourId,
         atDate: widget.travelDate,
+        people: widget.people, // 👈 truyền số người
       );
+
+      // ✅ Lọc bỏ mã ẩn
+      final visibleList = allList.where((x) {
+        final validPeople = x.people == null || x.people == widget.people;
+        return x.hidden == false &&
+            validPeople; // 👈 chỉ giữ mã có cùng số người hoặc không giới hạn
+      }).toList();
+
       Discount? preselected;
       if ((widget.initialCode ?? '').trim().isNotEmpty) {
         final u = widget.initialCode!.trim().toUpperCase();
-        final found = list.where((x) => (x.code).toUpperCase() == u);
+        final found = allList.where((x) => x.code.toUpperCase() == u);
         preselected = found.isNotEmpty
             ? found.first
-            : (list.isNotEmpty ? list.first : null);
+            : (visibleList.isNotEmpty ? visibleList.first : null);
       } else {
-        preselected = list.isNotEmpty ? list.first : null;
+        preselected = visibleList.isNotEmpty ? visibleList.first : null;
       }
+
       if (!mounted) return;
       setState(() {
-        _items = list;
+        _items = visibleList;
         _selected = preselected;
         _loading = false;
       });
@@ -99,34 +113,87 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
   Future<void> _applyManual() async {
     final code = _codeCtl.text.trim();
     if (code.isEmpty) return;
+
     setState(() => _validating = true);
+
     try {
-      final d = await _svc.validateCode(
-        tourId: widget.tourId,
-        code: code,
-        atDate: widget.travelDate,
-      );
-      if (!mounted) return;
-      if (d == null) {
+      final res = await Supabase.instance.client
+          .from('discounts')
+          .select()
+          .eq('code', code)
+          .maybeSingle();
+
+      if (res == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Mã không hợp lệ hoặc đã hết hạn.')));
+          const SnackBar(content: Text('❌ Mã không tồn tại trong hệ thống.')),
+        );
+        return;
+      }
+
+      final d = Discount.fromJson(res);
+
+      // 🔹 Kiểm tra tour
+      if (d.tourId != widget.tourId) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('⚠️ Mã ${d.code} không áp dụng cho tour này!'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+
+      final now = DateTime.now();
+      final expired = d.endDate != null && d.endDate!.isBefore(now);
+      final noUsage = d.usageLimit == 0;
+      final wrongPeople = d.people != null && d.people != widget.people;
+
+      String? warning;
+      if (expired) {
+        warning = '⏰ Mã ${d.code} đã hết hạn sử dụng!';
+      } else if (noUsage) {
+        warning = '🚫 Mã ${d.code} đã hết lượt sử dụng!';
+      } else if (wrongPeople) {
+        warning = '👥 Mã ${d.code} chỉ áp dụng cho ${d.people} người!';
+      }
+
+      // ✅ Luôn thêm mã vào danh sách để hiển thị, dù không dùng được
+      final exists =
+          _items.any((x) => x.code.toUpperCase() == d.code.toUpperCase());
+      if (!exists) {
+        setState(() => _items.insert(0, d));
+      }
+
+      // ✅ Nếu hợp lệ thì cho chọn, ngược lại chỉ hiển thị cảnh báo
+      if (warning != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(warning), backgroundColor: Colors.orangeAccent),
+        );
       } else {
         setState(() => _selected = d);
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Áp dụng mã ${d.code} thành công!')));
-        await Future.delayed(const Duration(milliseconds: 120));
-        final idx =
-            _filteredItems.indexWhere((x) => x.discountId == d.discountId);
-        if (idx >= 0 && _scrollCtl.hasClients) {
-          _scrollCtl.animateTo(
-            (idx * 110)
-                .clamp(0, _scrollCtl.position.maxScrollExtent)
-                .toDouble(),
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        }
+          SnackBar(
+            content: Text('✅ Mã ${d.code} đã được thêm và áp dụng!'),
+            backgroundColor: const Color(0xFF24BAEC),
+          ),
+        );
       }
+
+      // ✅ Cuộn tới vị trí mã
+      await Future.delayed(const Duration(milliseconds: 150));
+      final idx = _filteredItems.indexWhere((x) => x.code == d.code);
+      if (idx >= 0 && _scrollCtl.hasClients) {
+        _scrollCtl.animateTo(
+          (idx * 120).clamp(0, _scrollCtl.position.maxScrollExtent).toDouble(),
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi khi kiểm tra mã: $e')),
+      );
     } finally {
       if (mounted) setState(() => _validating = false);
     }
@@ -149,14 +216,21 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
     Navigator.pop(context, result);
   }
 
-  String _valueText(Discount d) => d.isPercent
-      ? '- ${d.value.toStringAsFixed(0)}%'
-      : '- ${_fmtVnd.format(d.value)}';
-  String _rangeText(Discount d) {
-    String f(DateTime? x) =>
-        x == null ? '—' : DateFormat('dd/MM/yyyy', 'vi').format(x);
-    return '${f(d.startDate)} → ${f(d.endDate)}';
+  String _valueText(Discount d) {
+    print('DEBUG >>> ${d.code} | ${d.discountType} | ${d.value}');
+    final isPercent = d.discountType == DiscountType.percent ||
+        d.discountType.name == 'percent' ||
+        d.value < 100;
+    return isPercent
+        ? 'Giảm ${d.value.toStringAsFixed(0)}%'
+        : 'Giảm ${_fmtVnd.format(d.value)}';
   }
+
+  // String _rangeText(Discount d) {
+  //   String f(DateTime? x) =>
+  //       x == null ? '—' : DateFormat('dd/MM/yyyy', 'vi').format(x);
+  //   return '${f(d.startDate)} → ${f(d.endDate)}';
+  // }
 
   List<Discount> get _filteredItems {
     final q = _searchCtl.text.trim().toLowerCase();
@@ -172,11 +246,6 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
           return d.isPercent;
         case 'amount':
           return !d.isPercent;
-        case 'freeship':
-          return name.contains('free') ||
-              name.contains('ship') ||
-              desc.contains('free') ||
-              desc.contains('ship');
         default:
           return true;
       }
@@ -185,177 +254,198 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: Stack(
-        children: [
-          // Subtle hero background
-          Container(
-            height: 160,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  const Color(0xFF24BAEC),
-                  const Color(0xFF24BAEC).withOpacity(0.8),
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.close, color: Colors.black, size: 26),
+            onPressed: () => Navigator.pop(context),
+          ),
+          backgroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: true,
+          title: Text(
+            "Mã giảm giá",
+            style: GoogleFonts.poppins(
+              color: Colors.black,
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        backgroundColor: const Color(0xFFF8FAFC),
+        body: Stack(
+          children: [
+            // 🔹 Header Gradient
+            Container(
+              height: 140,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color.fromARGB(255, 250, 251, 251),
+                    Color.fromARGB(255, 249, 251, 251),
+                  ],
+                ),
+              ),
+            ),
+
+            // 🔹 Nội dung chính
+            RefreshIndicator(
+              color: const Color(0xFF24BAEC),
+              onRefresh: _load,
+              child: CustomScrollView(
+                controller: _scrollCtl,
+                slivers: [
+                  // 🔸 Thanh nhập mã
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: _ModernInputBar(
+                        codeCtl: _codeCtl,
+                        validating: _validating,
+                        onApply: _applyManual,
+                      ),
+                    ),
+                  ),
+
+                  // 🔸 Bộ tìm kiếm + lọc
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _SearchField(
+                            ctl: _searchCtl,
+                            onChanged: () => setState(() {}),
+                          ),
+                          const SizedBox(height: 10),
+                          _SimpleFilterChips(
+                            value: _filter,
+                            onChanged: (v) => setState(() => _filter = v),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // 🔸 Danh sách voucher
+                  if (_loading)
+                    const SliverToBoxAdapter(child: _SimpleLoading())
+                  else if (_error != null)
+                    SliverToBoxAdapter(
+                        child: _SimpleError(message: _error!, onRetry: _load))
+                  else if (_filteredItems.isEmpty)
+                    const SliverToBoxAdapter(child: _SimpleEmpty())
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverList.separated(
+                        itemCount: _filteredItems.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (context, i) {
+                          final d = _filteredItems[i];
+                          final selected =
+                              _selected?.discountId == d.discountId;
+                          final dateFmt = DateFormat('yyyy-MM-dd');
+                          return _SimpleVoucherCard(
+                            discount: d,
+                            selected: selected,
+                            valueText: _valueText(d),
+                            startdate: dateFmt.format(d.startDate!),
+                            enndate: dateFmt.format(d.endDate!),
+                            onTap: () => setState(() => _selected = d),
+                            people: widget.people, // 👈 thêm dòng này
+                          );
+                        },
+                      ),
+                    ),
+
+                  const SliverToBoxAdapter(child: SizedBox(height: 120)),
                 ],
               ),
             ),
-          ),
-          // CONTENT
-          RefreshIndicator(
-            color: const Color(0xFF24BAEC),
-            onRefresh: _load,
-            child: CustomScrollView(
-              controller: _scrollCtl,
-              slivers: [
-                SliverAppBar(
-                  backgroundColor: Colors.transparent,
-                  pinned: true,
-                  expandedHeight: 100,
-                  flexibleSpace: FlexibleSpaceBar(
-                    centerTitle: false,
-                    titlePadding:
-                        const EdgeInsets.only(bottom: 8, left: 16, right: 16),
-                    title: _SimpleSearchBar(
-                      codeCtl: _codeCtl,
-                      validating: _validating,
-                      onApply: _applyManual,
-                    ),
-                  ),
-                ),
 
-                // Filter section
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _SearchField(
-                          ctl: _searchCtl,
-                          onChanged: () => setState(() {}),
-                        ),
-                        const SizedBox(height: 12),
-                        _SimpleFilterChips(
-                          value: _filter,
-                          onChanged: (v) => setState(() => _filter = v),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                if (_loading)
-                  const SliverFillRemaining(
-                      hasScrollBody: false, child: _SimpleLoading())
-                else if (_error != null)
-                  SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: _SimpleError(message: _error!, onRetry: _load))
-                else if (_filteredItems.isEmpty)
-                  const SliverFillRemaining(
-                      hasScrollBody: false, child: _SimpleEmpty())
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    sliver: SliverList.separated(
-                      itemCount: _filteredItems.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (context, i) {
-                        final d = _filteredItems[i];
-                        final selected = _selected?.discountId == d.discountId;
-                        return _SimpleVoucherCard(
-                          discount: d,
-                          selected: selected,
-                          valueText: _valueText(d),
-                          rangeText: _rangeText(d),
-                          onTap: () => setState(() => _selected = d),
-                        );
-                      },
-                    ),
-                  ),
-
-                const SliverToBoxAdapter(child: SizedBox(height: 120)),
-              ],
-            ),
-          ),
-
-          // Bottom bar
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: SafeArea(
-              minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 12,
-                      offset: const Offset(0, -2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 200),
-                        child: _selected == null
-                            ? Text(
-                                'Chưa chọn mã',
-                                key: const ValueKey('none'),
-                                style: GoogleFonts.lato(
-                                  color: Colors.grey[600],
-                                  fontSize: 14,
-                                ),
-                              )
-                            : _SimpleSelectedSummary(
-                                d: _selected!, fmtVnd: _fmtVnd),
+            // 🔹 Thanh đáy hiển thị mã đã chọn
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: SafeArea(
+                minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, -2),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF24BAEC),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 200),
+                          child: _selected == null
+                              ? Text(
+                                  'Chưa chọn mã giảm giá',
+                                  key: const ValueKey('none'),
+                                  style: GoogleFonts.lato(
+                                    color: Colors.grey[600],
+                                    fontSize: 14,
+                                  ),
+                                )
+                              : _SelectedVoucherSummary(
+                                  d: _selected!, fmtVnd: _fmtVnd),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
                       ),
-                      onPressed: _selected == null ? null : _popSelected,
-                      child: const Text('Dùng mã'),
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF24BAEC),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 10,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        onPressed: _selected == null ? null : _popSelected,
+                        child: const Text('Dùng mã'),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
 // ===== UI Components =====
-
+// ===================== 🔹 THANH NHẬP MÃ 🔹 =====================
 class _SimpleSearchBar extends StatelessWidget {
   const _SimpleSearchBar({
     required this.codeCtl,
     required this.validating,
     required this.onApply,
   });
+
   final TextEditingController codeCtl;
   final bool validating;
   final VoidCallback onApply;
@@ -363,50 +453,78 @@ class _SimpleSearchBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      height: 52,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.5)),
+        borderRadius: BorderRadius.circular(11),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF24BAEC),
+            Color(0xFF5DD0F5),
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF24BAEC).withOpacity(0.25),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          Icon(Icons.confirmation_number_outlined,
-              color: Colors.grey[600], size: 20),
-          const SizedBox(width: 8),
+          const SizedBox(width: 14),
+          const Icon(Icons.local_offer_outlined, color: Colors.white, size: 22),
+          const SizedBox(width: 10),
           Expanded(
             child: TextField(
               controller: codeCtl,
               decoration: InputDecoration(
+                hintText: 'Nhập mã giảm giá...',
+                hintStyle: GoogleFonts.lato(
+                  color: Colors.white.withOpacity(0.8),
+                  fontSize: 15,
+                ),
                 border: InputBorder.none,
-                hintText: 'Nhập mã giảm giá',
-                hintStyle: GoogleFonts.lato(color: Colors.grey[500]),
                 isDense: true,
-                contentPadding: EdgeInsets.zero,
               ),
+              style: GoogleFonts.lato(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+              cursorColor: Colors.white,
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => onApply(),
             ),
           ),
           if (validating)
-            const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF24BAEC)),
+            const Padding(
+              padding: EdgeInsets.only(right: 16),
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
               ),
             )
           else
             TextButton(
               onPressed: onApply,
               style: TextButton.styleFrom(
-                padding: EdgeInsets.zero,
-                foregroundColor: const Color(0xFF24BAEC),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
               ),
               child: Text(
                 'Áp dụng',
-                style: GoogleFonts.lato(fontWeight: FontWeight.w600),
+                style: GoogleFonts.lato(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  color: Colors.white,
+                ),
               ),
             ),
         ],
@@ -415,6 +533,7 @@ class _SimpleSearchBar extends StatelessWidget {
   }
 }
 
+// ===================== 🔹 Ô TÌM KIẾM 🔹 =====================
 class _SearchField extends StatelessWidget {
   const _SearchField({required this.ctl, required this.onChanged});
   final TextEditingController ctl;
@@ -422,29 +541,39 @@ class _SearchField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: ctl,
-      onChanged: (_) => onChanged(),
-      decoration: InputDecoration(
-        hintText: 'Tìm theo mã / tên / mô tả',
-        prefixIcon: Icon(Icons.search_rounded, color: Colors.grey[400]),
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[200]!),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: ctl,
+        onChanged: (_) => onChanged(),
+        decoration: InputDecoration(
+          prefixIcon:
+              Icon(Icons.search_rounded, color: Colors.grey[500], size: 22),
+          hintText: 'Tìm theo mã, tên hoặc mô tả...',
+          hintStyle: GoogleFonts.lato(
+            color: Colors.grey[500],
+            fontSize: 14.5,
+          ),
+          border: InputBorder.none,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[200]!),
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
     );
   }
 }
 
+// ===================== 🔹 FILTER CHIPS 🔹 =====================
 class _SimpleFilterChips extends StatelessWidget {
   const _SimpleFilterChips({required this.value, required this.onChanged});
   final String value;
@@ -453,37 +582,46 @@ class _SimpleFilterChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final filters = [
-      {'key': 'all', 'label': 'Tất cả'},
-      {'key': 'percent', 'label': '%'},
-      {'key': 'amount', 'label': 'Tiền'},
-      {'key': 'freeship', 'label': 'Freeship'},
+      {'key': 'all', 'label': 'Tất cả', 'icon': Icons.all_inclusive_rounded},
+      {'key': 'percent', 'label': 'Phần trăm', 'icon': Icons.percent_rounded},
+      {'key': 'amount', 'label': 'Tiền', 'icon': Icons.attach_money_rounded},
     ];
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         children: filters.map((f) {
-          final selected = value == f['key'];
+          final selected = value == f['key'] as String; // ✅ ép kiểu
           return Padding(
             padding: const EdgeInsets.only(right: 8),
             child: ChoiceChip(
+              avatar: Icon(
+                f['icon'] as IconData, // ✅ ép kiểu
+                size: 16,
+                color: selected ? Colors.white : const Color(0xFF24BAEC),
+              ),
               label: Text(
-                f['label']!,
+                f['label'] as String, // ✅ ép kiểu
                 style: GoogleFonts.lato(
-                  fontWeight: FontWeight.w600,
-                  color: selected ? Colors.white : Colors.grey[700],
+                  fontWeight: FontWeight.w700,
+                  color: selected ? Colors.white : Colors.grey[800],
+                  fontSize: 13.5,
                 ),
               ),
               selected: selected,
-              onSelected: (_) => onChanged(f['key']!),
+              onSelected: (_) => onChanged(f['key'] as String), // ✅ ép kiểu
               selectedColor: const Color(0xFF24BAEC),
-              backgroundColor: Colors.grey[50],
-              side: BorderSide(
-                color: selected ? const Color(0xFF24BAEC) : Colors.grey[200]!,
-              ),
+              backgroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(22),
+                side: BorderSide(
+                  color:
+                      selected ? const Color(0xFF24BAEC) : Colors.grey.shade300,
+                  width: 1.1,
+                ),
               ),
+              elevation: selected ? 3 : 0,
+              shadowColor: const Color(0xFF24BAEC).withOpacity(0.15),
             ),
           );
         }).toList(),
@@ -497,41 +635,87 @@ class _SimpleVoucherCard extends StatelessWidget {
     required this.discount,
     required this.selected,
     required this.valueText,
-    required this.rangeText,
     required this.onTap,
+    required this.people,
+    required this.startdate,
+    required this.enndate, // ✅ thêm people
   });
 
   final Discount discount;
   final bool selected;
   final String valueText;
-  final String rangeText;
+  final String startdate;
+  final String enndate;
   final VoidCallback onTap;
+  final int people; // ✅ thêm biến để kiểm tra điều kiện người đi
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: selected ? 4 : 1,
-      color: selected ? const Color(0xFFF0F9FF) : Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: selected
-            ? BorderSide(color: const Color(0xFF24BAEC).withOpacity(0.3))
-            : BorderSide.none,
+    final now = DateTime.now();
+    final expired = discount.endDate != null && discount.endDate!.isBefore(now);
+    final noUsage = discount.usageLimit != null && discount.usageLimit == 0;
+    final wrongPeople = discount.people != null && discount.people != people;
+
+    // Gộp điều kiện
+    final invalid = expired || noUsage || wrongPeople;
+
+    // Xác định nhãn cảnh báo
+    String? warningLabel;
+    if (expired) {
+      warningLabel = 'Hết hạn';
+    } else if (noUsage) {
+      warningLabel = 'Hết lượt';
+    } else if (wrongPeople) {
+      warningLabel = 'Không đủ điều kiện';
+    }
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        color: invalid
+            ? Colors.grey.shade100
+            : (selected ? const Color(0xFFF0FAFF) : Colors.white),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: invalid
+              ? Colors.grey.shade300
+              : (selected
+                  ? const Color(0xFF24BAEC).withOpacity(0.5)
+                  : Colors.grey.shade200),
+          width: selected ? 1.6 : 1.0,
+        ),
+        boxShadow: [
+          if (selected && !invalid)
+            BoxShadow(
+              color: const Color(0xFF24BAEC).withOpacity(0.15),
+              blurRadius: 12,
+              offset: const Offset(0, 3),
+            )
+          else
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+        ],
       ),
       child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
+        onTap: invalid ? null : onTap, // ❌ Không cho chọn nếu không hợp lệ
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(8),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Code and Value Badge
+              // 🔹 Mã code bên trái
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 44),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF24BAEC),
-                  borderRadius: BorderRadius.circular(8),
+                  color: invalid ? Colors.grey : const Color(0xFF24BAEC),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -540,102 +724,128 @@ class _SimpleVoucherCard extends StatelessWidget {
                       discount.code,
                       style: GoogleFonts.lato(
                         color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13.5,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 5),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
+                          horizontal: 6, vertical: 3),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(4),
+                        color: Colors.white.withOpacity(0.25),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         valueText,
                         style: GoogleFonts.lato(
                           color: Colors.white,
                           fontSize: 11,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
+
+              // 🔹 Thông tin chính
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Tên + trạng thái
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
+                          flex: 1,
                           child: Text(
-                            (discount.name ?? 'Ưu đãi cho chuyến đi'),
+                            discount.name ?? 'Ưu đãi hấp dẫn',
                             style: GoogleFonts.lato(
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w700,
                               fontSize: 16,
+                              color: invalid ? Colors.grey : Colors.black87,
                             ),
-                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        Icon(
-                          selected
-                              ? Icons.check_circle
-                              : Icons.radio_button_unchecked,
-                          color: selected
-                              ? const Color(0xFF24BAEC)
-                              : Colors.grey[400],
-                          size: 20,
-                        ),
+
+                        // ⚠️ Nếu không hợp lệ -> hiển thị nhãn
+                        if (invalid)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.redAccent.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              warningLabel ?? "Không hợp lệ",
+                              style: GoogleFonts.lato(
+                                color: Colors.redAccent,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          )
+                        else
+                          Checkbox(
+                            value: selected,
+                            onChanged: (_) => onTap(),
+                            shape: const CircleBorder(),
+                            activeColor: const Color(0xFF24BAEC),
+                          ),
                       ],
                     ),
+
                     if ((discount.description ?? '').isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
                         discount.description!,
                         style: GoogleFonts.lato(
-                          color: Colors.grey[600],
+                          color: invalid ? Colors.grey[500] : Colors.grey[600],
                           fontSize: 13,
+                          height: 1.4,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
-                    const Spacer(),
-                    Row(
-                      children: [
-                        Icon(Icons.calendar_today,
-                            size: 14, color: Colors.grey[500]),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Hiệu lực: $rangeText',
-                          style: GoogleFonts.lato(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
+
+                    if (discount.max_discount != null &&
+                        discount.isPercent) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Giảm tối đa: ${NumberFormat.currency(locale: "vi_VN", symbol: "₫", decimalDigits: 0).format(discount.max_discount)}',
+                        style: GoogleFonts.lato(
+                          color: Colors.blueGrey[600],
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
                         ),
-                        const Spacer(),
-                        TextButton(
-                          onPressed: onTap,
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            foregroundColor: const Color(0xFF24BAEC),
-                          ),
-                          child: Text(
-                            'Chọn',
-                            style:
-                                GoogleFonts.lato(fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ],
+                      ),
+                    ],
+
+                    const SizedBox(height: 4),
+
+                    Text(
+                      'Từ :$startdate',
+                      style: GoogleFonts.lato(
+                        fontSize: 12,
+                        color: invalid ? Colors.redAccent : Colors.grey[600],
+                        height: 1.3,
+                      ),
                     ),
+                    const Gap(4),
+                    Text(
+                      'Đến :$enndate',
+                      style: GoogleFonts.lato(
+                        fontSize: 12,
+                        color: invalid ? Colors.redAccent : Colors.grey[600],
+                        height: 1.3,
+                      ),
+                    )
                   ],
                 ),
               ),
@@ -657,29 +867,48 @@ class _SimpleSelectedSummary extends StatelessWidget {
     final valueText = d.isPercent
         ? '- ${d.value.toStringAsFixed(0)}%'
         : '- ${fmtVnd.format(d.value)}';
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
             color: const Color(0xFF24BAEC).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(6),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-          child: Text(
-            d.code,
-            style: GoogleFonts.lato(
-              color: const Color(0xFF24BAEC),
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFF24BAEC).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              d.code,
+              style: GoogleFonts.lato(
+                color: const Color(0xFF24BAEC),
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
             ),
           ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          valueText,
-          style: GoogleFonts.lato(fontWeight: FontWeight.w600, fontSize: 14),
-        ),
-      ],
+          const SizedBox(width: 10),
+          Text(
+            valueText,
+            style: GoogleFonts.lato(
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+              color: Colors.black87,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -728,6 +957,7 @@ class _SimpleLoading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
+      shrinkWrap: true, // ✅ Thêm dòng này để ListView tự co chiều cao
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       itemCount: 4,
@@ -789,6 +1019,122 @@ class _SimpleError extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ModernInputBar extends StatelessWidget {
+  const _ModernInputBar({
+    required this.codeCtl,
+    required this.validating,
+    required this.onApply,
+  });
+
+  final TextEditingController codeCtl;
+  final bool validating;
+  final VoidCallback onApply;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 6, bottom: 4, right: 4, left: 4),
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(11),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.confirmation_number_outlined,
+              color: Color(0xFF24BAEC), size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: TextField(
+              controller: codeCtl,
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                hintText: 'Nhập mã giảm giá...',
+                hintStyle: GoogleFonts.lato(color: Colors.grey[500]),
+                isDense: true,
+              ),
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => onApply(),
+            ),
+          ),
+          if (validating)
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF24BAEC)),
+              ),
+            )
+          else
+            TextButton(
+              onPressed: onApply,
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF24BAEC),
+              ),
+              child: Text(
+                'Áp dụng',
+                style: GoogleFonts.lato(fontWeight: FontWeight.w700),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SelectedVoucherSummary extends StatelessWidget {
+  const _SelectedVoucherSummary({required this.d, required this.fmtVnd});
+  final Discount d;
+  final NumberFormat fmtVnd;
+
+  @override
+  Widget build(BuildContext context) {
+    final valueText = d.isPercent
+        ? 'Giảm ${d.value.toStringAsFixed(0)}%'
+        : 'Giảm ${fmtVnd.format(d.value)}';
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFF24BAEC).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            children: [
+              Text(
+                'Mã Giảm:${d.code}',
+                style: GoogleFonts.lato(
+                  color: const Color(0xFF24BAEC),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const Gap(10),
+              Text(
+                valueText,
+                style: GoogleFonts.lato(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

@@ -12,12 +12,14 @@ class Discount {
   final String? name;
   final String? description;
   final DiscountType discountType; // percent | amount
-  final double value;              // % nếu percent, số tiền nếu amount
+  final double value; // % nếu percent, số tiền nếu amount
   final DateTime? startDate;
   final DateTime? endDate;
   final bool isActive;
   final int? usageLimit;
-
+  final bool hidden;
+  final max_discount;
+  final people;
   const Discount({
     required this.discountId,
     required this.tourId,
@@ -30,30 +32,47 @@ class Discount {
     this.endDate,
     this.isActive = true,
     this.usageLimit,
+    this.hidden = true,
+    this.max_discount,
+    this.people,
   });
 
   bool get isPercent => discountType == DiscountType.percent;
 
-  factory Discount.fromJson(Map<String, dynamic> j) {
-    DateTime? _toDate(dynamic v) =>
-        v == null ? null : DateTime.tryParse(v.toString());
-    double _toD(dynamic v) =>
-        v == null ? 0.0 : (v is num ? v.toDouble() : double.tryParse('$v') ?? 0.0);
-    int _toI(dynamic v) =>
-        v == null ? 0 : (v is int ? v : (v is num ? v.toInt() : int.tryParse('$v') ?? 0));
+  factory Discount.fromJson(Map<String, dynamic> json) {
+    // 🔹 Lấy discount_type an toàn
+    final typeStr = (json['discount_type'] ?? '').toString().toLowerCase();
+
+    late DiscountType type;
+    // Chấp nhận cả 'fixed' và 'amount' là số tiền, dưới 100% cũng tự nhận percent
+    if (typeStr == 'percent') {
+      type = DiscountType.percent;
+    } else if (typeStr == 'fixed' || typeStr == 'amount') {
+      type = DiscountType.amount;
+    } else {
+      // fallback: nếu value < 100 thì coi là %
+      final value = (json['value'] ?? 0).toDouble();
+      type = value < 100 ? DiscountType.percent : DiscountType.amount;
+    }
 
     return Discount(
-      discountId: _toI(j['discount_id']),
-      tourId: _toI(j['tour_id']),
-      code: (j['code'] ?? '').toString(),
-      name: j['name']?.toString(),
-      description: j['description']?.toString(),
-      discountType: _discountTypeFrom(j['discount_type']),
-      value: _toD(j['value']),
-      startDate: _toDate(j['start_date']),
-      endDate: _toDate(j['end_date']),
-      isActive: (j['is_active'] ?? true) == true,
-      usageLimit: j['usage_limit'] == null ? null : _toI(j['usage_limit']),
+      discountId: json['discount_id'] as int,
+      tourId: json['tour_id'] as int,
+      code: json['code'] ?? '',
+      name: json['name'],
+      description: json['description'],
+      discountType: type,
+      value: (json['value'] ?? 0).toDouble(),
+      startDate: json['start_date'] != null
+          ? DateTime.parse(json['start_date'])
+          : null,
+      endDate:
+          json['end_date'] != null ? DateTime.parse(json['end_date']) : null,
+      isActive: json['is_active'] ?? false,
+      hidden: json['hidden'] ?? false,
+      usageLimit: json['usage_limit'],
+      max_discount: json['max_discount'],
+      people: json['people'],
     );
   }
 }

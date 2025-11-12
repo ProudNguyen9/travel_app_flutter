@@ -458,7 +458,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 MaterialPageRoute(
                                                     builder: (_) =>
                                                         DetailScreen(
-                                                          tourId: t.tourId,
+                                                          tour: t,
                                                         )));
                                           },
                                           size: size,
@@ -703,6 +703,7 @@ class CardItemForYou extends StatelessWidget {
   const CardItemForYou({
     super.key,
     this.loading = false,
+    this.t,
     this.imageUrl,
     this.fallbackAsset = 'assets/images/bgsearch.jpg',
     this.title = 'Núi đẹp lắm',
@@ -717,6 +718,7 @@ class CardItemForYou extends StatelessWidget {
   final String fallbackAsset;
   final int idTour;
   final String title;
+  final TourFull? t;
   final String tag;
   final String decription;
   final double rating;
@@ -741,7 +743,7 @@ class CardItemForYou extends StatelessWidget {
             context,
             MaterialPageRoute(
                 builder: (_) => DetailScreen(
-                      tourId: idTour,
+                      tour: t!,
                     )),
           );
         },
@@ -1040,9 +1042,43 @@ class TabViewChild extends StatelessWidget {
 
         // Giá “từ”: ưu tiên người lớn, thiếu thì fallback trẻ em
         final baseAdult = _toD(t.basePriceAdult) ?? 0;
-        final baseChild = _toD(t.basePriceChild);
-        final priceFrom = (baseAdult > 0 ? baseAdult : (baseChild ?? 0));
+        final discountType = t.bestDiscountType;
+        final discountValue = _toD(t.bestDiscountValue);
+        final discountPeople = _toI(t.bestDiscountPeople);
+        final discountCap = _toD(t.bestDiscountCap);
+        final hasDiscount = t.bestDiscountId != null && discountType != null;
 
+        double finalPrice = baseAdult;
+        String priceLabel = 'Chỉ từ ${Formatter.vnd(baseAdult)} / người';
+        String? discountBadge; // 👈 badge giảm giá hiển thị góc phải
+
+        if (hasDiscount && baseAdult > 0) {
+          double discountAmount = 0;
+
+          if (discountType == 'percent') {
+            discountAmount = baseAdult * (discountValue! / 100);
+            if (discountCap != null && discountAmount > discountCap) {
+              discountAmount = discountCap;
+            }
+            // Hiển thị badge phần trăm
+            discountBadge = '-${discountValue.toStringAsFixed(0)}%';
+          } else if (discountType == 'fixed') {
+            discountAmount = discountValue ?? 0;
+            // Hiển thị badge số tiền
+            discountBadge = '-${Formatter.vnd(discountAmount)}';
+          }
+
+          finalPrice = baseAdult - discountAmount;
+          if (finalPrice < 0) finalPrice = 0;
+
+          // Nếu là nhóm (>=4 người), thêm chữ nhóm 4+ vào badge
+          if (discountPeople != null && discountPeople >= 4) {
+            discountBadge = '${discountBadge!}\nnhóm $discountPeople+';
+          }
+
+          // Dòng hiển thị giá luôn là "Từ xxx / người"
+          priceLabel = 'Chỉ từ ${Formatter.vnd(finalPrice)} / người';
+        }
         // Số ngày
         final days = _toI(t.durationDays) ?? 0;
         final daysLabel = formatDuration(t.durationDays is num
@@ -1061,7 +1097,7 @@ class TabViewChild extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                     builder: (_) => DetailScreen(
-                          tourId: t.tourId,
+                          tour: t,
                         )));
           },
           child: SizedBox(
@@ -1150,18 +1186,16 @@ class TabViewChild extends StatelessWidget {
                       ),
 
                       const Gap(10),
-
                       // ✅ TẦNG 1: CHỈ GIÁ
                       _chip(
-                        text:
-                            'Từ ${Formatter.vnd(priceFrom).replaceFirst('đ', ' đ')}',
+                        text: priceLabel,
                         icon: Icons.payments_rounded,
                       ),
-
+                      // ✅ TẦNG 2: NGÀY + SAO
                       const Gap(10),
 
-                      // ✅ TẦNG 2: NGÀY + SAO
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
                           _chip(
                             text: daysLabel,
@@ -1177,7 +1211,42 @@ class TabViewChild extends StatelessWidget {
                       ),
                     ],
                   ),
-                )
+                ),
+                if (discountBadge != null)
+                  Positioned(
+                    right: 14,
+                    top: 15,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFF6B6B), Color(0xFFE63946)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x66000000),
+                            offset: Offset(0, 3),
+                            blurRadius: 6,
+                          )
+                        ],
+                      ),
+                      child: Text(
+                        discountBadge,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.2,
+                          height: 1.15,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

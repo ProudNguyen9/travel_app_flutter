@@ -14,6 +14,14 @@ class TourFull {
   final String? tourTypeCode;
   List<String>? images;
 
+  // ===== Discount fields (from vw_tours_full) =====
+  final int? bestDiscountId; // bv.discount_id
+  final int?
+      bestDiscountPeople; // bv.required_people (NULL/1 = 1 người; >=2 = nhóm)
+  final String? bestDiscountType; // 'percent' | 'fixed'
+  final double? bestDiscountValue; // % hoặc số tiền
+  final double? bestDiscountCap; // trần (nếu percent)
+
   TourFull({
     required this.tourId,
     required this.name,
@@ -29,6 +37,11 @@ class TourFull {
     this.updatedAt,
     this.tourTypeName,
     this.tourTypeCode,
+    this.bestDiscountId,
+    this.bestDiscountPeople,
+    this.bestDiscountType,
+    this.bestDiscountValue,
+    this.bestDiscountCap,
   });
 
   factory TourFull.fromMap(Map<String, dynamic> j) {
@@ -39,25 +52,41 @@ class TourFull {
       return null;
     }
 
+    int? toInt(dynamic v) {
+      if (v == null) return null;
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+      if (v is String) return int.tryParse(v);
+      return null;
+    }
+
     DateTime? toDate(dynamic v) {
       if (v == null) return null;
       return DateTime.tryParse(v.toString());
     }
 
     return TourFull(
-      tourId: j['tour_id'] as int,
-      name: j['name'] ?? "",
+      tourId: (j['tour_id'] as num).toInt(),
+      name: j['name'] ?? '',
       description: j['description'],
+
       basePriceAdult: toDouble(j['base_price_adult']),
       basePriceChild: toDouble(j['base_price_child']),
       durationDays: toDouble(j['duration_days']),
-      maxParticipants: (j['max_participants'] as num?)?.toInt(),
-      tourTypeId: (j['tour_type_id'] as num?)?.toInt(),
+      maxParticipants: toInt(j['max_participants']),
+      tourTypeId: toInt(j['tour_type_id']),
       imageUrl: j['image_url'],
       createdAt: toDate(j['created_at']),
       updatedAt: toDate(j['updated_at']),
       tourTypeName: j['tour_type_name'],
       tourTypeCode: j['tour_type_code'],
+
+      // discount fields
+      bestDiscountId: toInt(j['best_discount_id']),
+      bestDiscountPeople: toInt(j['best_discount_people']),
+      bestDiscountType: j['best_discount_type'],
+      bestDiscountValue: toDouble(j['best_discount_value']),
+      bestDiscountCap: toDouble(j['best_discount_cap']),
     );
   }
 
@@ -75,6 +104,13 @@ class TourFull {
         'updated_at': updatedAt?.toIso8601String(),
         'tour_type_name': tourTypeName,
         'tour_type_code': tourTypeCode,
+
+        // discount fields
+        'best_discount_id': bestDiscountId,
+        'best_discount_people': bestDiscountPeople,
+        'best_discount_type': bestDiscountType,
+        'best_discount_value': bestDiscountValue,
+        'best_discount_cap': bestDiscountCap,
       };
 
   TourFull copyWith({
@@ -91,6 +127,14 @@ class TourFull {
     DateTime? updatedAt,
     String? tourTypeName,
     String? tourTypeCode,
+    List<String>? images,
+
+    // discount fields
+    int? bestDiscountId,
+    int? bestDiscountPeople,
+    String? bestDiscountType,
+    double? bestDiscountValue,
+    double? bestDiscountCap,
   }) {
     return TourFull(
       tourId: tourId ?? this.tourId,
@@ -102,10 +146,20 @@ class TourFull {
       maxParticipants: maxParticipants ?? this.maxParticipants,
       tourTypeId: tourTypeId ?? this.tourTypeId,
       imageUrl: imageUrl ?? this.imageUrl,
+      images: images ?? this.images,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       tourTypeName: tourTypeName ?? this.tourTypeName,
       tourTypeCode: tourTypeCode ?? this.tourTypeCode,
+
+      // discount fields
+      bestDiscountId: bestDiscountId ?? this.bestDiscountId,
+      bestDiscountPeople: bestDiscountPeople ?? this.bestDiscountPeople,
+      bestDiscountType: bestDiscountType ?? this.bestDiscountType,
+      bestDiscountValue: bestDiscountValue ?? this.bestDiscountValue,
+      bestDiscountCap: bestDiscountCap ?? this.bestDiscountCap,
     );
   }
+
+  bool get hasDiscount => bestDiscountId != null;
 }

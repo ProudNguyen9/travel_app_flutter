@@ -4,53 +4,51 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:travel_app/data/models/FavoriteTour.dart';
 import 'package:travel_app/data/services/favorite_tour_service.dart';
 
-class FavoriteToursPage extends StatefulWidget {
-  const FavoriteToursPage({super.key});
+class FavoriteTourScreen extends StatefulWidget {
+  const FavoriteTourScreen({super.key});
 
   @override
-  State<FavoriteToursPage> createState() => _FavoriteToursPageState();
+  State<FavoriteTourScreen> createState() => _FavoriteTourScreenState();
 }
 
-class _FavoriteToursPageState extends State<FavoriteToursPage> {
+class _FavoriteTourScreenState extends State<FavoriteTourScreen> {
   late Future<List<FavoriteTour>> _favoritesFuture;
-    @override
-    void initState() {
-      super.initState();
-      _favoritesFuture = Future.value([]); // ✅ gán mặc định để tránh late error
-      _loadUserFavorites();
+  @override
+  void initState() {
+    super.initState();
+    _favoritesFuture = Future.value([]); // ✅ gán mặc định để tránh late error
+    _loadUserFavorites();
+  }
+
+  void _loadUserFavorites() async {
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    debugPrint('[FavPage] currentUser (auth_id) = ${currentUser?.id}');
+    if (currentUser == null) {
+      _favoritesFuture = Future.value([]);
+      return;
     }
 
+    // 🔹 Lấy user_id nội bộ từ bảng public.users dựa trên auth_id
+    final userData = await Supabase.instance.client
+        .from('users')
+        .select('user_id')
+        .eq('auth_id', currentUser.id)
+        .maybeSingle();
 
- void _loadUserFavorites() async {
-  final currentUser = Supabase.instance.client.auth.currentUser;
-  debugPrint('[FavPage] currentUser (auth_id) = ${currentUser?.id}');
-  if (currentUser == null) {
-    _favoritesFuture = Future.value([]);
-    return;
+    if (userData == null) {
+      debugPrint('[FavPage] Không tìm thấy user ứng với auth_id');
+      _favoritesFuture = Future.value([]);
+      return;
+    }
+
+    final userId = userData['user_id'] as int;
+    debugPrint('[FavPage] user_id nội bộ = $userId');
+
+    setState(() {
+      _favoritesFuture =
+          FavoriteTourService.instance.fetchFavoritesByUser(userId);
+    });
   }
-
-  // 🔹 Lấy user_id nội bộ từ bảng public.users dựa trên auth_id
-  final userData = await Supabase.instance.client
-      .from('users')
-      .select('user_id')
-      .eq('auth_id', currentUser.id)
-      .maybeSingle();
-
-  if (userData == null) {
-    debugPrint('[FavPage] Không tìm thấy user ứng với auth_id');
-    _favoritesFuture = Future.value([]);
-    return;
-  }
-
-  final userId = userData['user_id'] as int;
-  debugPrint('[FavPage] user_id nội bộ = $userId');
-
-  setState(() {
-    _favoritesFuture =
-        FavoriteTourService.instance.fetchFavoritesByUser(userId);
-  });
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -88,7 +86,6 @@ class _FavoriteToursPageState extends State<FavoriteToursPage> {
               ),
             ),
             const SizedBox(height: 10),
-
             Expanded(
               child: FutureBuilder<List<FavoriteTour>>(
                 future: _favoritesFuture,

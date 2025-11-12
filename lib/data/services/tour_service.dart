@@ -17,53 +17,38 @@ class TourService {
   /// - Lần đầu: gọi API → lưu cache
   /// - Các lần sau: trả về cache luôn
   Future<List<TourFull>> fetchAllTours() async {
+    // 1️⃣ Dùng cache nếu có
     if (_cachedTours != null) {
       // print("🔥 Trả về cache RAM, không gọi lại API");
       return _cachedTours!;
     }
 
+    // 2️⃣ Gọi API Supabase
     // print("🌐 Gọi API Supabase...");
     final rows = await _db.from(_view).select();
 
-    _cachedTours = (rows as List)
+    // 3️⃣ Map dữ liệu cơ bản
+    final tours = (rows as List)
         .map((e) => TourFull.fromMap(e as Map<String, dynamic>))
         .toList();
 
-    _lastFetch = DateTime.now();
-
-    return _cachedTours!;
-  }
-
-  // 🟦 Lấy 1 tour theo ID (dùng cache nếu có) + luôn tải ảnh mới nhất
-  Future<TourFull?> fetchTourForDetailById(int tourId) async {
-    TourFull? tour;
-
-    // 1) Tìm trong cache nếu có
-    if (_cachedTours != null) {
+    // 4️⃣ Gán ảnh cho từng tour
+    for (final tour in tours) {
       try {
-        tour = _cachedTours!.firstWhere((t) => t.tourId == tourId);
-      } catch (_) {}
-    }
-
-    // 2) Nếu chưa có → tạo cache
-    if (tour == null) {
-      await fetchAllTours();
-      try {
-        tour = _cachedTours!.firstWhere((t) => t.tourId == tourId);
-      } catch (_) {
-        return null;
+        final images = await _fetchImagesByTourId(tour.tourId);
+        tour.images = images;
+      } catch (e) {
+        // Có thể log nhẹ nếu muốn
+        // print("⚠️ Lỗi tải ảnh cho tour ${tour.tourId}: $e");
+        tour.images = [];
       }
     }
 
-    // 3) Luôn tải list ảnh mới nhất từ VIEW
-    try {
-      final images = await _fetchImagesByTourId(tourId);
-      tour.images = images; // gán trực tiếp (images KHÔNG final)
-    } catch (_) {
-      // optional: log
-    }
+    // 5️⃣ Cache lại
+    _cachedTours = tours;
+    _lastFetch = DateTime.now();
 
-    return tour;
+    return _cachedTours!;
   }
 
   /// 🖼️ Lấy danh sách ảnh theo tour_id từ VIEW (tour_locations → locations)

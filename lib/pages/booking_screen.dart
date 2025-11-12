@@ -132,6 +132,25 @@ class _BookingTourScreenState extends State<BookingTourScreen> {
                 : () {
                     final maxP = widget.tour.maxParticipants ?? 9999;
                     final total = _adult + _youth + _senior;
+
+                    if (total < 1) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Vui lòng chọn ít nhất 1 người.')),
+                      );
+                      return;
+                    }
+
+                    // 1) Trẻ em phải có người lớn đi kèm
+                    if (_youth > 0 && _adult == 0 && _senior == 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Trẻ em phải có người lớn đi kèm.')),
+                      );
+                      return;
+                    }
+
+                    // 3) Không vượt quá sức chứa
                     if (total > maxP) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
@@ -141,12 +160,13 @@ class _BookingTourScreenState extends State<BookingTourScreen> {
                       return;
                     }
 
+                    // OK -> đi tiếp
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (_) => PaymentTourScreen(
                           tour: widget.tour,
-                          startDate: _startDate!, // đã disable nếu null
+                          startDate: _startDate!,
                           adults: _adult,
                           children: _youth,
                           seniors: _senior,

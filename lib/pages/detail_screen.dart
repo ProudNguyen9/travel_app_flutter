@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:travel_app/data/data.dart'; // TourService + TourFull
+import 'package:travel_app/data/data.dart'; // TourFull
 import 'package:travel_app/data/services/favorite_tour_service.dart';
 import 'package:travel_app/pages/booking_screen.dart';
 import 'package:travel_app/utils/formatter.dart'; // Formatter.vnd
@@ -11,10 +11,10 @@ import 'package:travel_app/utils/formatter.dart'; // Formatter.vnd
 class DetailScreen extends StatefulWidget {
   const DetailScreen({
     super.key,
-    required this.tourId,
+    required this.tour, // ⬅ truyền thẳng TourFull
   });
 
-  final int tourId;
+  final TourFull tour;
 
   @override
   State<DetailScreen> createState() => _DetailScreenState();
@@ -23,8 +23,8 @@ class DetailScreen extends StatefulWidget {
 class _DetailScreenState extends State<DetailScreen> {
   static const primary = Color(0xFF24BAEC);
 
+  late TourFull _tour; // ⬅️ luôn có giá trị
   List<String> _images = [];
-  TourFull? _tour;
   int _selectedIndex = 0;
   bool _loading = true;
 
@@ -40,41 +40,30 @@ class _DetailScreenState extends State<DetailScreen> {
   @override
   void initState() {
     super.initState();
-    _loadData(widget.tourId);
+    _initFromTour(widget.tour);
   }
 
-  /// Load tour + ảnh theo ID
-  Future<void> _loadData(int tourId) async {
-    try {
-      final svc = TourService.instance; // singleton
-      final tour = await svc.fetchTourForDetailById(tourId); // TourFull?
+  /// Khởi tạo dữ liệu hiển thị từ TourFull đã truyền vào
+  void _initFromTour(TourFull tour) {
+    _tour = tour;
 
-      // Ảnh: ưu tiên list images, sau đó mainImage/imageUrl, cuối cùng placeholder
-      List<String> images =
-          (tour?.images ?? []).where((e) => e.trim().isNotEmpty).toList();
+    // Ảnh: ưu tiên list images, sau đó imageUrl, cuối cùng placeholder
+    List<String> imgs =
+        (tour.images ?? []).where((e) => e.trim().isNotEmpty).toList();
 
-      final main = (tour?.imageUrl ?? tour?.imageUrl);
-      if (images.isEmpty && (main != null && main.trim().isNotEmpty)) {
-        images = [main];
-      }
-      if (images.isEmpty) {
-        images = ['assets/images/placeholder.jpg'];
-      }
-
-      setState(() {
-        _tour = tour;
-        _images = images;
-        _selectedIndex = 0;
-        _loading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _tour = null;
-        _images = ['assets/images/placeholder.jpg'];
-        _selectedIndex = 0;
-        _loading = false;
-      });
+    final main = tour.imageUrl;
+    if (imgs.isEmpty && (main != null && main.trim().isNotEmpty)) {
+      imgs = [main];
     }
+    if (imgs.isEmpty) {
+      imgs = ['assets/images/placeholder.jpg'];
+    }
+
+    setState(() {
+      _images = imgs;
+      _selectedIndex = 0;
+      _loading = false;
+    });
   }
 
   /// Tự động chọn đúng ImageProvider theo path
@@ -88,11 +77,10 @@ class _DetailScreenState extends State<DetailScreen> {
     return AssetImage(path);
   }
 
-  String _priceText(TourFull? t) {
-    if (t == null) return 'Giá cập nhật sau';
+  String _priceText(TourFull t) {
     final price = t.basePriceAdult;
     if (price == null) return 'Giá cập nhật sau';
-    return '${Formatter.vnd(price)}/người';
+    return Formatter.vnd(price);
   }
 
   /// Hiển thị 80% mô tả, bấm để Đọc thêm / Thu gọn
@@ -133,17 +121,17 @@ class _DetailScreenState extends State<DetailScreen> {
     final size = MediaQuery.of(context).size;
     final double imageWidth = size.width - 32;
     final double imageHeight = size.height * 0.3;
-    final tourt = _tour;
-    final title = (_tour?.name != null && _tour!.name.toString().isNotEmpty)
-        ? _tour!.name.toString()
-        : '—';
-    // nếu bạn có locationName thì thay ở đây; tạm dùng tourTypeName làm subtitle
+
+    final title = (_tour.name.isNotEmpty) ? _tour.name : '—';
+    // nếu có locationName thật thì thay; tạm dùng tourTypeName làm subtitle
     final location =
-        _tour?.tourTypeName ?? _tour?.tourTypeName ?? 'Đang cập nhật địa điểm';
-    final desc = (_tour?.description?.isNotEmpty ?? false)
-        ? _tour!.description!
+        _tour.tourTypeName ?? _tour.tourTypeName ?? 'Đang cập nhật địa điểm';
+    final desc = (_tour.description?.isNotEmpty ?? false)
+        ? _tour.description!
         : 'Thông tin đang cập nhật…';
-    final priceText = _priceText(_tour);
+
+    // meta giá (gốc, sau giảm, badge)
+    final meta = computePriceMeta(_tour);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
@@ -172,7 +160,7 @@ class _DetailScreenState extends State<DetailScreen> {
                 height: imageHeight,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(21),
-                  color: _loading ? Colors.white : null, // khung trắng khi load
+                  color: _loading ? Colors.white : null,
                   image: _loading
                       ? null
                       : DecorationImage(
@@ -232,19 +220,67 @@ class _DetailScreenState extends State<DetailScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-
-              // ==== Mô tả + Giá ====
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('Mô tả',
-                      style: lato(16, w: FontWeight.w700, c: primary)),
-                  const Spacer(),
-                  Text(
-                    priceText,
-                    style: lato(16, w: FontWeight.w700, c: Colors.black87),
+                  // ===== Cột giá =====
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Giá sau giảm
+                      Row(
+                        children: [
+                          Text(
+                            'Chỉ từ ${Formatter.vnd(meta.finalPrice)} /🧍‍♂️',
+                            style:
+                                lato(16, w: FontWeight.w700, c: Colors.black87),
+                          ),
+                          // ===== Badge giảm giá (cùng dòng, bên phải) =====
+                          if (meta.hasDiscount && meta.badge != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE63946),
+                                borderRadius: BorderRadius.circular(8),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                meta.badge!,
+                                style: lato(12,
+                                    w: FontWeight.w700, c: Colors.white),
+                              ),
+                            ),
+                        ],
+                      ),
+                      // Giá gốc (nếu có)
+                      if (meta.hasDiscount)
+                        Text(
+                          Formatter.vnd(meta.base),
+                          style: lato(13, c: Colors.grey).copyWith(
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),
+              // ==== Mô tả  ====
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Mô tả',
+                      style: lato(16, w: FontWeight.w700, c: primary)),
+                ],
+              ),
+
               const SizedBox(height: 10),
 
               // ==== MÔ TẢ: 80% + Đọc thêm ====
@@ -292,9 +328,7 @@ class _DetailScreenState extends State<DetailScreen> {
                                   ),
                                 ]
                               : null,
-                          color: _loading
-                              ? Colors.white
-                              : null, // ô trắng khi load
+                          color: _loading ? Colors.white : null,
                           image: _loading
                               ? null
                               : DecorationImage(
@@ -325,7 +359,7 @@ class _DetailScreenState extends State<DetailScreen> {
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) => BookingTourScreen(
-                                      tour: tourt!,
+                                      tour: _tour, // ⬅️ truyền cả tour
                                     ),
                                   ),
                                 );
@@ -366,14 +400,11 @@ class _DetailScreenState extends State<DetailScreen> {
                                 try {
                                   await FavoriteTourService.instance
                                       .addFavoriteByAuth(
-                                          authUser.id, tourt!.tourId);
-                                  // (tuỳ chọn) cập nhật UI nếu bạn có danh sách id yêu thích:
-                                  // setState(() => _favIds.add(t.tourId));
-
+                                          authUser.id, _tour.tourId);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                         content: Text(
-                                            'Đã thêm "${tourt.name}" vào yêu thích ❤️')),
+                                            'Đã thêm "${_tour.name}" vào yêu thích ❤️')),
                                   );
                                 } catch (e) {
                                   ScaffoldMessenger.of(context).showSnackBar(
@@ -428,4 +459,49 @@ Widget _amenity({required IconData icon, required String text}) {
       ),
     ],
   );
+}
+
+class PriceMeta {
+  final double base; // giá gốc / người
+  final double finalPrice; // giá sau giảm / người
+  final bool hasDiscount;
+  final String? badge; // "-20%" hoặc "-500.000 ₫" (kèm " nhóm 4+" nếu có)
+
+  PriceMeta(this.base, this.finalPrice, this.hasDiscount, this.badge);
+}
+
+PriceMeta computePriceMeta(TourFull t) {
+  double base = (t.basePriceAdult ?? 0).toDouble();
+  final String? discountType = t.bestDiscountType; // 'percent' | 'fixed' | null
+  final double? discountValue = (t.bestDiscountValue is num)
+      ? (t.bestDiscountValue as num).toDouble()
+      : double.tryParse('${t.bestDiscountValue}');
+  final double? discountCap = (t.bestDiscountCap is num)
+      ? (t.bestDiscountCap as num).toDouble()
+      : double.tryParse('${t.bestDiscountCap}');
+  final int groupMin = (t.bestDiscountPeople ?? 1);
+
+  bool hasDiscount =
+      t.bestDiscountId != null && discountType != null && base > 0;
+  if (!hasDiscount) return PriceMeta(base, base, false, null);
+
+  // Tính số tiền giảm
+  double off = 0;
+  String badge;
+  if (discountType == 'percent') {
+    off = base * ((discountValue ?? 0) / 100);
+    if (discountCap != null && off > discountCap) off = discountCap;
+    badge = '-${(discountValue ?? 0).toStringAsFixed(0)}%';
+  } else {
+    off = discountValue ?? 0;
+    badge = '-${Formatter.vnd(off)}';
+  }
+
+  double finalPrice = base - off;
+  if (finalPrice < 0) finalPrice = 0;
+
+  // Thêm nhãn nhóm nếu yêu cầu > 1
+  if (groupMin > 1) badge = '$badge  nhóm $groupMin+';
+
+  return PriceMeta(base, finalPrice, true, badge);
 }

@@ -1,146 +1,191 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:travel_app/pages/discount_picker_screen.dart';
 import 'package:travel_app/utils/extensions.dart';
-
+import '../data/models/user_model.dart';
+import '../data/services/profile_service.dart';
 import 'screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
   final Color accentBlue = const Color(0xFF1FB6FF);
+  UserModel? user;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final profile = await ProfileService().getCurrentUserProfile();
+    if (!mounted) return;
+    setState(() {
+      user = profile;
+      isLoading = false;
+    });
+  }
+
+  Future<void> _navigateToEdit() async {
+    final updated = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+    );
+
+    // Dù cập nhật thông tin hay chỉ đổi ảnh → luôn reload lại dữ liệu
+    if (updated == true || updated == null) {
+      setState(() => isLoading = true);
+      await _loadProfile();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final screenWidth = constraints.maxWidth;
-        final scale = screenWidth / 390;
-        final safeBottom = MediaQuery.of(context).padding.bottom;
-        final reserveForFloatingNav = 100.0 * scale + safeBottom + 16.0;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final scale = screenWidth / 390;
+    final safeBottom = MediaQuery.of(context).padding.bottom;
+    final reserveForFloatingNav = 100.0 * scale + safeBottom + 16.0;
 
-        return Scaffold(
-          backgroundColor: Colors.white,
-          appBar: AppBar(
-            automaticallyImplyLeading: false,
-            title: Text(
-              'Hồ sơ cá nhân',
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: Text(
+          'Hồ sơ cá nhân',
+          style: GoogleFonts.lato(
+            fontSize: 19 * scale,
+            fontWeight: FontWeight.w700,
+            color: Colors.black,
+          ),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        actions: [
+          Padding(
+            padding: EdgeInsets.only(right: 14 * scale),
+            child: Center(
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const SettingsScreen(),
+                    ),
+                  );
+                },
+                child: Icon(
+                  Icons.settings_rounded,
+                  size: 26 * scale,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(
+          24 * scale,
+          16 * scale,
+          24 * scale,
+          reserveForFloatingNav,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(height: 10 * scale),
+            // Avatar
+            CircleAvatar(
+              radius: 48 * scale,
+              backgroundImage: isLoading
+                  ? null
+                  : (user?.profileImage != null
+                      ? NetworkImage(user!.profileImage!)
+                      : const AssetImage('assets/images/main.png')
+                          as ImageProvider),
+              backgroundColor: Colors.grey[200],
+            ),
+            SizedBox(height: 14 * scale),
+            // Name
+            Text(
+              isLoading ? '' : (user?.name ?? 'Chưa có tên'),
               style: GoogleFonts.lato(
-                fontSize: 19 * scale,
+                fontSize: 18 * scale,
                 fontWeight: FontWeight.w700,
                 color: Colors.black,
               ),
             ),
-            backgroundColor: Colors.white,
-            elevation: 0,
-            centerTitle: true,
-            actions: [
-              Padding(
-                padding: EdgeInsets.only(right: 14 * scale),
-                child: Center(
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const SettingsScreen(),
-                        ),
-                      );
-                    },
-                    child: Icon(
-                      Icons.settings_rounded,
-                      size: 26 * scale,
-                      color: Colors.black87,
+            SizedBox(height: 4 * scale),
+            // Email
+            Text(
+              isLoading ? '' : (user?.email ?? ''),
+              style: GoogleFonts.lato(
+                fontSize: 16 * scale,
+                color: accentBlue,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+            SizedBox(height: 32 * scale),
+
+            // ================= Thông tin cá nhân =================
+            _sectionTitle('Thông tin cá nhân', scale),
+            const Divider(thickness: 0.5, color: Color(0xFFE0E0E0)),
+            _infoItem(
+                isLoading ? '...' : 'Họ tên: ${user?.name ?? "..."}', scale),
+            _infoItem(
+                isLoading ? '...' : 'Email: ${user?.email ?? "..."}', scale),
+            _infoItem(
+                isLoading ? '...' : 'SĐT: ${user?.phone ?? "..."}', scale),
+
+            SizedBox(height: 24 * scale),
+
+            // ================= Địa chỉ =================
+            _sectionTitle('Địa chỉ', scale),
+            const Divider(thickness: 0.5, color: Color(0xFFE0E0E0)),
+            _infoItem(isLoading ? '...' : (user?.address ?? 'Chưa có địa chỉ'),
+                scale),
+
+            SizedBox(height: 20 * scale),
+            if (!isLoading) _quickActions(scale, context),
+            if (!isLoading) SizedBox(height: 24 * scale),
+
+            // Edit button
+            if (!isLoading)
+              SizedBox(
+                width: context.deviceSize.width * 0.6,
+                height: 54,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF24BAEC),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(26 * scale),
+                    ),
+                  ),
+                  onPressed: _navigateToEdit,
+                  child: Text(
+                    'Chỉnh sửa',
+                    style: GoogleFonts.lato(
+                      fontSize: 16 * scale,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
                     ),
                   ),
                 ),
               ),
-            ],
-          ),
-          body: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: EdgeInsets.fromLTRB(
-              24 * scale,
-              16 * scale,
-              24 * scale,
-              reserveForFloatingNav,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(height: 10 * scale),
-                CircleAvatar(
-                  radius: 48 * scale,
-                  backgroundImage: const AssetImage('assets/images/main.png'),
-                  backgroundColor: Colors.grey[200],
-                ),
-                SizedBox(height: 14 * scale),
-                Text(
-                  'Nguyễn Lê Nhàn Lộc',
-                  style: GoogleFonts.lato(
-                    fontSize: 18 * scale,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black,
-                  ),
-                ),
-                SizedBox(height: 4 * scale),
-                Text(
-                  'Thaotho199x@gmail.com',
-                  style: GoogleFonts.lato(
-                    fontSize: 16 * scale,
-                    color: accentBlue,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                SizedBox(height: 32 * scale),
-                _sectionTitle('Thông tin cá nhân', scale),
-                const Divider(thickness: 0.5, color: Color(0xFFE0E0E0)),
-                _infoItem('Nguyễn Lê Nhàn Lộc', scale),
-                _infoItem('Thaotho199x@gmail.com', scale),
-                _infoItem('039 688 292', scale),
-                SizedBox(height: 24 * scale),
-                _sectionTitle('Địa chỉ', scale),
-                const Divider(thickness: 0.5, color: Color(0xFFE0E0E0)),
-                _infoItem('Thành phố Hồ Chí Minh / Quận 8 / Phường 11', scale),
-                SizedBox(height: 20 * scale),
-                _quickActions(scale, context),
-                SizedBox(height: 24 * scale),
-                SizedBox(
-                  width: context.deviceSize.width * 0.6,
-                  height: 54,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF24BAEC),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(26 * scale),
-                      ),
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => DiscountPickerScreen(
-                            tourId: 9,
-                            travelDate: DateTime.now(),
-                          ),
-                        ),
-                      );
-                    },
-                    child: Text(
-                      'Chỉnh sửa',
-                      style: GoogleFonts.lato(
-                        fontSize: 16 * scale,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+
+            SizedBox(height: 14 * scale),
+          ],
+        ),
+      ),
     );
   }
 
@@ -156,7 +201,7 @@ class ProfileScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => const FavoriteToursPage(),
+                  builder: (_) => const FavoriteTourScreen(),
                 ),
               );
             },
@@ -197,10 +242,10 @@ class ProfileScreen extends StatelessWidget {
         child: Container(
           height: 110 * scale,
           decoration: BoxDecoration(
-            color: Colors.white, // BASIC COLOR
+            color: Colors.white,
             borderRadius: BorderRadius.circular(18 * scale),
             border: Border.all(
-              color: const Color(0xFFE7E7E9), // viền xám rất nhẹ chuẩn travel
+              color: const Color(0xFFE7E7E9),
               width: 1,
             ),
             boxShadow: [
@@ -226,7 +271,7 @@ class ProfileScreen extends StatelessWidget {
                 child: Icon(
                   icon,
                   size: 22 * scale,
-                  color: const Color(0xFF24BAEC), // icon theo màu brand
+                  color: const Color(0xFF24BAEC),
                 ),
               ),
               SizedBox(height: 8 * scale),

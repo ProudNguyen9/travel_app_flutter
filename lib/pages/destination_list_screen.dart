@@ -80,7 +80,7 @@ class DestinationListScreen extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => DetailScreen(tourId: t.tourId),
+                              builder: (_) => DetailScreen(tour: t),
                             ),
                           );
                         },
@@ -132,8 +132,7 @@ class DestinationListScreen extends StatelessWidget {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) =>
-                                      DetailScreen(tourId: t.tourId),
+                                  builder: (_) => DetailScreen(tour: t),
                                 ),
                               );
                             },
