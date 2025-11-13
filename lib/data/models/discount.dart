@@ -19,7 +19,7 @@ class Discount {
   final DateTime? endDate;
   final bool isActive;
   final int? usageLimit;
-  final int? earlyBookingDays; // 👈 đặt sớm bao nhiêu ngày
+  final int? earlyBookingDays; // đặt sớm bao nhiêu ngày
   final bool hidden;
   final double? maxDiscount;
   final int? people;
@@ -47,28 +47,49 @@ class Discount {
   factory Discount.fromJson(Map<String, dynamic> json) {
     final type = _discountTypeFrom(json['discount_type']);
 
+    int? toInt(dynamic v) {
+      if (v == null) return null;
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+      if (v is String) return int.tryParse(v);
+      return null;
+    }
+
+    double? toDouble(dynamic v) {
+      if (v == null) return null;
+      if (v is double) return v;
+      if (v is num) return v.toDouble();
+      if (v is String) return double.tryParse(v);
+      return null;
+    }
+
+    DateTime? toDate(dynamic v) {
+      if (v == null) return null;
+      if (v is DateTime) return v;
+      return DateTime.tryParse(v.toString());
+    }
+
     return Discount(
-      discountId: json['discount_id'] as int,
-      tourId: json['tour_id'] as int,
-      code: json['code'] ?? '',
-      name: json['name'],
-      description: json['description'],
+      discountId: toInt(json['discount_id']) ?? 0,
+      tourId: toInt(json['tour_id']) ?? 0,
+      code: json['code']?.toString() ?? '',
+      name: json['name']?.toString(),
+      description: json['description']?.toString(),
       discountType: type,
-      value: (json['value'] ?? 0).toDouble(),
-      startDate: json['start_date'] != null
-          ? DateTime.parse(json['start_date'])
-          : null,
-      endDate: json['end_date'] != null
-          ? DateTime.parse(json['end_date'])
-          : null,
+      value: toDouble(json['value']) ?? 0,
+      startDate: toDate(json['start_date']),
+      endDate: toDate(json['end_date']),
       isActive: json['is_active'] ?? false,
       hidden: json['hidden'] ?? false,
-      usageLimit: json['usage_limit'],
-      earlyBookingDays: json['early_booking_days'] ?? 0, // 👈 map mới
-      maxDiscount: json['max_discount'] != null
-          ? (json['max_discount'] as num).toDouble()
-          : null,
-      people: json['people'],
+      usageLimit: toInt(json['usage_limit']),
+      earlyBookingDays: toInt(json['early_booking_days']),
+      maxDiscount: toDouble(json['max_discount']),
+      people: toInt(json['people']),
     );
+  }
+
+  @override
+  String toString() {
+    return 'Discount(id=$discountId, code=$code, type=$discountType, value=$value, earlyBookingDays=$earlyBookingDays)';
   }
 }

@@ -1,19 +1,14 @@
 import 'dart:ui';
 
 import 'package:animate_do/animate_do.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:travel_app/utils/duration_formatter.dart';
 
 import '../data/data.dart';
-import '../models_template/people_also_like_model.dart';
 import '../utils/utils.dart';
-import '../widget/reuseable_text.dart';
-import '../models_template/tab_bar_model.dart';
 import '../widget/painter.dart';
 import '../widget/reuseabale_middle_app_text.dart';
 import '../widget/widget.dart';

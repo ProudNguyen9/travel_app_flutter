@@ -7,12 +7,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/models/discount.dart';
 import '../data/services/discount_service.dart';
 
-/// Discount Picker – Modern Basic Edition
-/// - Simplified color system: Primary blue #24BAEC
-/// - Clean flat cards with subtle shadows
-/// - Minimalist filters as chips
-/// - Compact search and input
-/// - Bottom bar with clean summary
 class DiscountPickerScreen extends StatefulWidget {
   const DiscountPickerScreen({
     super.key,
@@ -26,6 +20,7 @@ class DiscountPickerScreen extends StatefulWidget {
   final DateTime travelDate;
   final String? initialCode;
   final int people;
+
   @override
   State<DiscountPickerScreen> createState() => _DiscountPickerScreenState();
 }
@@ -33,7 +28,6 @@ class DiscountPickerScreen extends StatefulWidget {
 class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
   final _fmtVnd =
       NumberFormat.currency(locale: 'vi_VN', symbol: '₫', decimalDigits: 0);
-
   late final DiscountService _svc;
   final _codeCtl = TextEditingController();
   final _searchCtl = TextEditingController();
@@ -44,8 +38,7 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
   bool _loading = true;
   bool _validating = false;
   String? _error;
-
-  String _filter = 'all'; // all | percent | amount |
+  String _filter = 'all'; // all | percent | amount
 
   @override
   void initState() {
@@ -70,15 +63,11 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
     });
 
     try {
-      // Chỉ load từ service — không lọc gì cả
-      final allList = await _svc.fetchValidDiscounts(
-        tourId: widget.tourId,
-      );
-
+      final allList = await _svc.fetchValidDiscounts(tourId: widget.tourId);
       if (!mounted) return;
       setState(() {
-        _items = allList; // giữ nguyên danh sách gốc
-        _selected = null; // chưa chọn gì cả
+        _items = allList;
+        _selected = null;
         _loading = false;
       });
     } catch (e) {
@@ -95,24 +84,21 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
     if (code.isEmpty) return;
 
     setState(() => _validating = true);
-
     try {
       final res = await Supabase.instance.client
           .from('discounts')
           .select()
           .eq('code', code)
           .maybeSingle();
-
       if (res == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('❌ Mã không tồn tại trong hệ thống.')),
         );
         return;
       }
-
       final d = Discount.fromJson(res);
 
-      // 🔹 Kiểm tra tour
+      // Kiểm tra tour
       if (d.tourId != widget.tourId) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -125,26 +111,31 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
 
       final now = DateTime.now();
       final expired = d.endDate != null && d.endDate!.isBefore(now);
-      final noUsage = d.usageLimit == 0;
+      final noUsage = d.usageLimit != null && d.usageLimit == 0;
       final wrongPeople = d.people != null && d.people != widget.people;
+      bool tooLate = false;
+      if (d.earlyBookingDays != null) {
+        final limitDate =
+            widget.travelDate.subtract(Duration(days: d.earlyBookingDays!));
+        tooLate = now.isAfter(limitDate);
+      }
 
       String? warning;
-      if (expired) {
-        warning = '⏰ Mã ${d.code} đã hết hạn sử dụng!';
-      } else if (noUsage) {
-        warning = '🚫 Mã ${d.code} đã hết lượt sử dụng!';
-      } else if (wrongPeople) {
+      if (expired)
+        warning = '⏰ Mã ${d.code} đã hết hạn!';
+      else if (noUsage)
+        warning = '🚫 Mã ${d.code} hết lượt!';
+      else if (wrongPeople)
         warning = '👥 Mã ${d.code} chỉ áp dụng cho ${d.people} người!';
-      }
+      else if (tooLate)
+        warning =
+            '⏰ Mã ${d.code} yêu cầu đặt sớm hơn ${d.earlyBookingDays} ngày!';
 
-      // ✅ Luôn thêm mã vào danh sách để hiển thị, dù không dùng được
+      // Thêm vào danh sách nếu chưa có
       final exists =
           _items.any((x) => x.code.toUpperCase() == d.code.toUpperCase());
-      if (!exists) {
-        setState(() => _items.insert(0, d));
-      }
+      if (!exists) _items.insert(0, d);
 
-      // ✅ Nếu hợp lệ thì cho chọn, ngược lại chỉ hiển thị cảnh báo
       if (warning != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -160,7 +151,6 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
         );
       }
 
-      // ✅ Cuộn tới vị trí mã
       await Future.delayed(const Duration(milliseconds: 150));
       final idx = _filteredItems.indexWhere((x) => x.code == d.code);
       if (idx >= 0 && _scrollCtl.hasClients) {
@@ -171,9 +161,8 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi khi kiểm tra mã: $e')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Lỗi khi kiểm tra mã: $e')));
     } finally {
       if (mounted) setState(() => _validating = false);
     }
@@ -196,21 +185,9 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
     Navigator.pop(context, result);
   }
 
-  String _valueText(Discount d) {
-    print('DEBUG >>> ${d.code} | ${d.discountType} | ${d.value}');
-    final isPercent = d.discountType == DiscountType.percent ||
-        d.discountType.name == 'percent' ||
-        d.value < 100;
-    return isPercent
-        ? 'Giảm ${d.value.toStringAsFixed(0)}%'
-        : 'Giảm ${_fmtVnd.format(d.value)}';
-  }
-
-  // String _rangeText(Discount d) {
-  //   String f(DateTime? x) =>
-  //       x == null ? '—' : DateFormat('dd/MM/yyyy', 'vi').format(x);
-  //   return '${f(d.startDate)} → ${f(d.endDate)}';
-  // }
+  String _valueText(Discount d) => d.isPercent
+      ? 'Giảm ${d.value.toStringAsFixed(0)}%'
+      : 'Giảm ${_fmtVnd.format(d.value)}';
 
   List<Discount> get _filteredItems {
     final q = _searchCtl.text.trim().toLowerCase();
@@ -221,6 +198,7 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
       final hit =
           q.isEmpty || code.contains(q) || name.contains(q) || desc.contains(q);
       if (!hit) return false;
+
       switch (_filter) {
         case 'percent':
           return d.isPercent;
@@ -256,7 +234,6 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
         backgroundColor: const Color(0xFFF8FAFC),
         body: Stack(
           children: [
-            // 🔹 Header Gradient
             Container(
               height: 140,
               decoration: const BoxDecoration(
@@ -270,15 +247,12 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
                 ),
               ),
             ),
-
-            // 🔹 Nội dung chính
             RefreshIndicator(
               color: const Color(0xFF24BAEC),
               onRefresh: _load,
               child: CustomScrollView(
                 controller: _scrollCtl,
                 slivers: [
-                  // 🔸 Thanh nhập mã
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.all(8),
@@ -289,8 +263,6 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
                       ),
                     ),
                   ),
-
-                  // 🔸 Bộ tìm kiếm + lọc
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
@@ -310,8 +282,6 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
                       ),
                     ),
                   ),
-
-                  // 🔸 Danh sách voucher
                   if (_loading)
                     const SliverToBoxAdapter(child: _SimpleLoading())
                   else if (_error != null)
@@ -329,26 +299,21 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
                           final d = _filteredItems[i];
                           final selected =
                               _selected?.discountId == d.discountId;
-                          final dateFmt = DateFormat('yyyy-MM-dd');
                           return _SimpleVoucherCard(
                             discount: d,
                             selected: selected,
                             valueText: _valueText(d),
-                            startdate: dateFmt.format(d.startDate!),
-                            enndate: dateFmt.format(d.endDate!),
                             onTap: () => setState(() => _selected = d),
-                            people: widget.people, // 👈 thêm dòng này
+                            people: widget.people,
+                            travelDate: widget.travelDate,
                           );
                         },
                       ),
                     ),
-
                   const SliverToBoxAdapter(child: SizedBox(height: 120)),
                 ],
               ),
             ),
-
-            // 🔹 Thanh đáy hiển thị mã đã chọn
             Positioned(
               left: 0,
               right: 0,
@@ -394,9 +359,7 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
                           backgroundColor: const Color(0xFF24BAEC),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 10,
-                          ),
+                              horizontal: 18, vertical: 10),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -417,97 +380,154 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
   }
 }
 
-// ===== UI Components =====
-// ===================== 🔹 THANH NHẬP MÃ 🔹 =====================
-class _SimpleSearchBar extends StatelessWidget {
-  const _SimpleSearchBar({
-    required this.codeCtl,
-    required this.validating,
-    required this.onApply,
+// ===================== Voucher Card =====================
+class _SimpleVoucherCard extends StatelessWidget {
+  const _SimpleVoucherCard({
+    required this.discount,
+    required this.selected,
+    required this.valueText,
+    required this.onTap,
+    required this.people,
+    required this.travelDate,
   });
 
-  final TextEditingController codeCtl;
-  final bool validating;
-  final VoidCallback onApply;
+  final Discount discount;
+  final bool selected;
+  final String valueText;
+  final VoidCallback onTap;
+  final int people;
+  final DateTime travelDate;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 52,
+    final now = DateTime.now();
+    final expired = discount.endDate != null && discount.endDate!.isBefore(now);
+    final noUsage = discount.usageLimit != null && discount.usageLimit == 0;
+    final wrongPeople = discount.people != null && discount.people != people;
+
+    bool tooLate = false;
+    if (discount.earlyBookingDays != null) {
+      final limitDate =
+          travelDate.subtract(Duration(days: discount.earlyBookingDays!));
+      tooLate = now.isAfter(limitDate);
+    }
+
+    final invalid = expired || noUsage || wrongPeople || tooLate;
+
+    String? warningLabel;
+    if (expired)
+      warningLabel = 'Hết hạn';
+    else if (noUsage)
+      warningLabel = 'Hết lượt';
+    else if (wrongPeople)
+      warningLabel = 'Không đủ người';
+    else if (tooLate) warningLabel = 'Đặt quá muộn';
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(11),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF24BAEC),
-            Color(0xFF5DD0F5),
+        color: invalid
+            ? Colors.red.shade50
+            : (selected ? const Color(0xFFF0FAFF) : Colors.white),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: invalid
+              ? Colors.redAccent
+              : (selected
+                  ? const Color(0xFF24BAEC).withOpacity(0.5)
+                  : Colors.grey.shade200),
+          width: selected ? 1.6 : 1.0,
+        ),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: invalid ? null : onTap,
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 44),
+              decoration: BoxDecoration(
+                color: invalid ? Colors.redAccent : const Color(0xFF24BAEC),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                children: [
+                  Text(discount.code,
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 5),
+                  Text(valueText,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                          child: Text(discount.name ?? 'Ưu đãi hấp dẫn',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: invalid
+                                      ? Colors.redAccent
+                                      : Colors.black87))),
+                      if (invalid)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                              color: Colors.redAccent.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(6)),
+                          child: Text(warningLabel ?? 'Không hợp lệ',
+                              style: const TextStyle(
+                                  color: Colors.redAccent,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12)),
+                        )
+                      else
+                        Checkbox(
+                            value: selected,
+                            onChanged: (_) => onTap(),
+                            activeColor: const Color(0xFF24BAEC)),
+                    ],
+                  ),
+                  if ((discount.description ?? '').isNotEmpty)
+                    Text(discount.description!,
+                        style: TextStyle(
+                            color: invalid
+                                ? Colors.red.shade200
+                                : Colors.grey[600],
+                            fontSize: 13)),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Từ: ${discount.startDate != null ? DateFormat('dd/MM/yyyy').format(discount.startDate!) : "—"} → Đến: ${discount.endDate != null ? DateFormat('dd/MM/yyyy').format(discount.endDate!) : "—"}',
+                    style: TextStyle(
+                        color: invalid ? Colors.redAccent : Colors.grey[600],
+                        fontSize: 12),
+                  ),
+                  if (discount.maxDiscount != null && discount.isPercent)
+                    Text(
+                        'Giảm tối đa: ${NumberFormat.currency(locale: "vi_VN", symbol: "₫").format(discount.maxDiscount)}',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: invalid
+                                ? Colors.redAccent
+                                : Colors.blueGrey[600])),
+                ],
+              ),
+            ),
           ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF24BAEC).withOpacity(0.25),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          const SizedBox(width: 14),
-          const Icon(Icons.local_offer_outlined, color: Colors.white, size: 22),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              controller: codeCtl,
-              decoration: InputDecoration(
-                hintText: 'Nhập mã giảm giá...',
-                hintStyle: GoogleFonts.lato(
-                  color: Colors.white.withOpacity(0.8),
-                  fontSize: 15,
-                ),
-                border: InputBorder.none,
-                isDense: true,
-              ),
-              style: GoogleFonts.lato(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-              cursorColor: Colors.white,
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => onApply(),
-            ),
-          ),
-          if (validating)
-            const Padding(
-              padding: EdgeInsets.only(right: 16),
-              child: SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              ),
-            )
-          else
-            TextButton(
-              onPressed: onApply,
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-              ),
-              child: Text(
-                'Áp dụng',
-                style: GoogleFonts.lato(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-        ],
       ),
     );
   }
@@ -605,232 +625,6 @@ class _SimpleFilterChips extends StatelessWidget {
             ),
           );
         }).toList(),
-      ),
-    );
-  }
-}
-
-class _SimpleVoucherCard extends StatelessWidget {
-  const _SimpleVoucherCard({
-    required this.discount,
-    required this.selected,
-    required this.valueText,
-    required this.onTap,
-    required this.people,
-    required this.startdate,
-    required this.enndate, // ✅ thêm people
-  });
-
-  final Discount discount;
-  final bool selected;
-  final String valueText;
-  final String startdate;
-  final String enndate;
-  final VoidCallback onTap;
-  final int people; // ✅ thêm biến để kiểm tra điều kiện người đi
-
-  @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final expired = discount.endDate != null && discount.endDate!.isBefore(now);
-    final noUsage = discount.usageLimit != null && discount.usageLimit == 0;
-    final wrongPeople = discount.people != null && discount.people != people;
-
-    // Gộp điều kiện
-    final invalid = expired || noUsage || wrongPeople;
-
-    // Xác định nhãn cảnh báo
-    String? warningLabel;
-    if (expired) {
-      warningLabel = 'Hết hạn';
-    } else if (noUsage) {
-      warningLabel = 'Hết lượt';
-    } else if (wrongPeople) {
-      warningLabel = 'Không đủ điều kiện';
-    }
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOut,
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      decoration: BoxDecoration(
-        color: invalid
-            ? Colors.grey.shade100
-            : (selected ? const Color(0xFFF0FAFF) : Colors.white),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: invalid
-              ? Colors.grey.shade300
-              : (selected
-                  ? const Color(0xFF24BAEC).withOpacity(0.5)
-                  : Colors.grey.shade200),
-          width: selected ? 1.6 : 1.0,
-        ),
-        boxShadow: [
-          if (selected && !invalid)
-            BoxShadow(
-              color: const Color(0xFF24BAEC).withOpacity(0.15),
-              blurRadius: 12,
-              offset: const Offset(0, 3),
-            )
-          else
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-        ],
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: invalid ? null : onTap, // ❌ Không cho chọn nếu không hợp lệ
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 🔹 Mã code bên trái
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 44),
-                decoration: BoxDecoration(
-                  color: invalid ? Colors.grey : const Color(0xFF24BAEC),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      discount.code,
-                      style: GoogleFonts.lato(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13.5,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.25),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        valueText,
-                        style: GoogleFonts.lato(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 14),
-
-              // 🔹 Thông tin chính
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Tên + trạng thái
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          flex: 1,
-                          child: Text(
-                            discount.name ?? 'Ưu đãi hấp dẫn',
-                            style: GoogleFonts.lato(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                              color: invalid ? Colors.grey : Colors.black87,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-
-                        // ⚠️ Nếu không hợp lệ -> hiển thị nhãn
-                        if (invalid)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.redAccent.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              warningLabel ?? "Không hợp lệ",
-                              style: GoogleFonts.lato(
-                                color: Colors.redAccent,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          )
-                        else
-                          Checkbox(
-                            value: selected,
-                            onChanged: (_) => onTap(),
-                            shape: const CircleBorder(),
-                            activeColor: const Color(0xFF24BAEC),
-                          ),
-                      ],
-                    ),
-
-                    if ((discount.description ?? '').isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        discount.description!,
-                        style: GoogleFonts.lato(
-                          color: invalid ? Colors.grey[500] : Colors.grey[600],
-                          fontSize: 13,
-                          height: 1.4,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-
-                    if (discount.maxDiscount != null && discount.isPercent) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        'Giảm tối đa: ${NumberFormat.currency(locale: "vi_VN", symbol: "₫", decimalDigits: 0).format(discount.maxDiscount)}',
-                        style: GoogleFonts.lato(
-                          color: Colors.blueGrey[600],
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-
-                    const SizedBox(height: 4),
-
-                    Text(
-                      'Từ :$startdate',
-                      style: GoogleFonts.lato(
-                        fontSize: 12,
-                        color: invalid ? Colors.redAccent : Colors.grey[600],
-                        height: 1.3,
-                      ),
-                    ),
-                    const Gap(4),
-                    Text(
-                      'Đến :$enndate',
-                      style: GoogleFonts.lato(
-                        fontSize: 12,
-                        color: invalid ? Colors.redAccent : Colors.grey[600],
-                        height: 1.3,
-                      ),
-                    )
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

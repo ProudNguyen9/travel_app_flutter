@@ -8,35 +8,30 @@ class DiscountService {
 
   String _d(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
 
-  /// 👉 Lấy các mã:
-  /// - tour đúng
-  /// - active
-  /// - start_date >= today (TỪ HÔM NAY TRỞ ĐI)
+  /// Lấy các discount hợp lệ cho tour
   Future<List<Discount>> fetchValidDiscounts({
     required int tourId,
   }) async {
     final today = DateTime.now();
+    final dateStr = _d(today);
 
     final rows = await _client
         .from('discounts')
         .select()
-        // ✅ trùng tour id
         .eq('tour_id', tourId)
-        // ✅ đang active
         .eq('is_active', true)
-        // ✅ không bị ẩn
         .eq('hidden', false)
-        // ✅ còn lượt sử dụng
-        .neq('usage_limit', 0)
-        // ✅ start_date <= today và (end_date >= today OR end_date IS NULL)
-        .lte('start_date', today.toIso8601String())
-        .or('end_date.gte.${today.toIso8601String()},end_date.is.null')
-        // ✅ sắp xếp theo start_date
+        // usage_limit null (unlimited) hoặc != 0
+        .or('usage_limit.is.null,usage_limit.neq.0')
+        // start_date <= today và (end_date >= today OR end_date IS NULL)
+        .lte('start_date', dateStr)
+        .or('end_date.gte.$dateStr,end_date.is.null')
         .order('start_date', ascending: true);
+
     return rows.map((e) => Discount.fromJson(e)).toList();
   }
 
-  /// 👉 Kiểm tra mã (chỉ cần start_date >= today)
+  /// Kiểm tra mã (chỉ cần start_date >= today)
   Future<Discount?> validateCode({
     required int tourId,
     required String code,
@@ -50,7 +45,7 @@ class DiscountService {
         .eq('tour_id', tourId)
         .eq('code', code)
         .eq('is_active', true)
-        .gte('start_date', dateStr) // 👈 mã từ hôm nay trở đi mới hợp lệ
+        .gte('start_date', dateStr)
         .maybeSingle();
 
     if (row == null) return null;

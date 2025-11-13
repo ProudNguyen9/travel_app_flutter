@@ -121,7 +121,7 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
       MaterialPageRoute(
         builder: (_) => DiscountPickerScreen(
           tourId: widget.tour.tourId,
-          travelDate: DateTime.now(),
+          travelDate: widget.startDate,
           initialCode: _discountCode,
           people: people,
         ),
