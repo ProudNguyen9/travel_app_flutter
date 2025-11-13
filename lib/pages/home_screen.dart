@@ -389,6 +389,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   itemCount: 3,
                                   itemBuilder: (context, index) =>
                                       const CardItemForYou(
+                                    t: null,
                                     loading: true,
                                     idTour: 0,
                                   ), // khung trắng
@@ -401,6 +402,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       loading: false,
                                       imageUrl: t.imageUrl,
                                       title: t.name,
+                                      t: t,
                                       tag: t.tourTypeName ?? "Tour",
                                       decription: t.description ?? "Địa điểm",
                                       rating: 4.6,
@@ -1040,45 +1042,53 @@ class TabViewChild extends StatelessWidget {
         final location = t.tourTypeName ?? 'Điểm đến';
         final imageUrl = t.imageUrl;
 
-        // Giá “từ”: ưu tiên người lớn, thiếu thì fallback trẻ em
+        // Giá “từ”: ưu tiên người lớn, fallback trẻ em
         final baseAdult = _toD(t.basePriceAdult) ?? 0;
+        final baseChild = _toD(t.basePriceChild) ?? 0;
         final discountType = t.bestDiscountType;
         final discountValue = _toD(t.bestDiscountValue);
         final discountPeople = _toI(t.bestDiscountPeople);
         final discountCap = _toD(t.bestDiscountCap);
+        final earlyBookingDays =
+            _toI(t.bestDiscountEarlyDays); // số ngày đặt sớm
         final hasDiscount = t.bestDiscountId != null && discountType != null;
 
-        double finalPrice = baseAdult;
-        String priceLabel = 'Chỉ từ ${Formatter.vnd(baseAdult)} / người';
-        String? discountBadge; // 👈 badge giảm giá hiển thị góc phải
+        double finalPrice = baseAdult > 0 ? baseAdult : baseChild;
+        String priceLabel = 'Chỉ từ ${Formatter.vnd(finalPrice)} / người';
+        String? discountBadge;
 
-        if (hasDiscount && baseAdult > 0) {
+        if (hasDiscount && finalPrice > 0) {
           double discountAmount = 0;
 
           if (discountType == 'percent') {
-            discountAmount = baseAdult * (discountValue! / 100);
+            discountAmount = finalPrice * (discountValue! / 100);
             if (discountCap != null && discountAmount > discountCap) {
               discountAmount = discountCap;
             }
-            // Hiển thị badge phần trăm
             discountBadge = '-${discountValue.toStringAsFixed(0)}%';
           } else if (discountType == 'fixed') {
             discountAmount = discountValue ?? 0;
-            // Hiển thị badge số tiền
             discountBadge = '-${Formatter.vnd(discountAmount)}';
           }
 
-          finalPrice = baseAdult - discountAmount;
+          finalPrice -= discountAmount;
           if (finalPrice < 0) finalPrice = 0;
 
-          // Nếu là nhóm (>=4 người), thêm chữ nhóm 4+ vào badge
           if (discountPeople != null && discountPeople >= 4) {
-            discountBadge = '${discountBadge!}\nnhóm $discountPeople+';
+            discountBadge = '${discountBadge!}\nNhóm $discountPeople+';
           }
 
-          // Dòng hiển thị giá luôn là "Từ xxx / người"
+          // Thêm thông tin "Đặt sớm" nếu <= 30 ngày
+          if (earlyBookingDays != null &&
+              earlyBookingDays > 0 &&
+              earlyBookingDays <= 30) {
+            discountBadge =
+                '${discountBadge ?? ''}\nĐặt trước $earlyBookingDays ngày';
+          }
+
           priceLabel = 'Chỉ từ ${Formatter.vnd(finalPrice)} / người';
         }
+
         // Số ngày
         final days = _toI(t.durationDays) ?? 0;
         final daysLabel = formatDuration(t.durationDays is num
@@ -1239,7 +1249,7 @@ class TabViewChild extends StatelessWidget {
                         textAlign: TextAlign.center,
                         style: GoogleFonts.poppins(
                           color: Colors.white,
-                          fontSize: 12.5,
+                          fontSize: 10,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.2,
                           height: 1.15,

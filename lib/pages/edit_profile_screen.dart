@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as path;
+import 'package:travel_app/pages/Login/otp_verification_screen.dart';
 import 'package:travel_app/utils/extensions.dart';
 import '../data/models/user_model.dart';
 import '../data/services/profile_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -44,22 +46,31 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  /// 🔹 Hàm định dạng số điện thoại sang chuẩn E.164
+  String formatPhoneNumber(String phone) {
+    phone = phone.trim().replaceAll(' ', '');
+    if (phone.startsWith('0')) {
+      phone = '+84${phone.substring(1)}';
+    } else if (!phone.startsWith('+84')) {
+      phone = '+84$phone';
+    }
+    return phone;
+  }
+
   /// 🔹 Chọn ảnh từ thiết bị (Android/iOS), kiểm tra định dạng & upload lên Supabase
   Future<void> _pickImage() async {
     try {
       final picker = ImagePicker();
-
-      // ✅ Chỉ gọi pickImage khi context còn mounted
       if (!mounted) return;
 
       final picked = await picker.pickImage(
         source: ImageSource.gallery,
         maxWidth: 1080,
         maxHeight: 1080,
-        imageQuality: 90, // giảm kích thước upload
+        imageQuality: 90,
       );
 
-      if (picked == null) return; // người dùng bấm hủy
+      if (picked == null) return;
 
       final ext = path.extension(picked.path).toLowerCase();
       const allowed = ['.jpg', '.jpeg', '.png'];
@@ -74,10 +85,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         return;
       }
 
-      // ✅ Hiển thị ảnh tạm thời trước
       setState(() => _localImagePath = picked.path);
 
-      // ✅ Upload lên Supabase
       final url = await ProfileService().uploadAvatar(picked.path);
 
       if (url == null) {
@@ -90,7 +99,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         return;
       }
 
-      // ✅ Cập nhật thông tin người dùng
       setState(() {
         user = user?.copyWith(profileImage: url);
       });
@@ -114,12 +122,66 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  /// Gửi OTP cho số điện thoại mới, trả về true nếu thành công
+  Future<bool> _sendOtp(String phoneInput) async {
+    setState(() => isLoading = true);
+
+    final formattedPhone = formatPhoneNumber(phoneInput);
+    final supabase = Supabase.instance.client;
+
+    try {
+      await supabase.auth.signInWithOtp(phone: formattedPhone);
+      if (!mounted) return false;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("✅ Đã gửi mã OTP đến $formattedPhone")),
+      );
+      return true;
+    } catch (e) {
+      if (!mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('⚠️ Lỗi khi gửi OTP: $e')),
+      );
+      return false;
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
   Future<void> _saveChanges() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final newPhone = _phoneController.text.trim();
+    final phoneChanged = newPhone != (user?.phone ?? '');
+
+    if (phoneChanged) {
+      final otpSent = await _sendOtp(newPhone);
+      if (!otpSent) return;
+
+      final otpVerified = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => OtpVerificationScreen(
+            phoneNumber: formatPhoneNumber(newPhone),
+          ),
+        ),
+      );
+
+      if (otpVerified != true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content:
+                Text('❌ OTP chưa xác thực, không thể cập nhật số điện thoại.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
     final success = await ProfileService().updateUserProfile({
       'name': _nameController.text.trim(),
-      'phone': _phoneController.text.trim(),
+      'phone': formatPhoneNumber(newPhone),
       'address': _addressController.text.trim(),
     });
 
@@ -143,12 +205,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
     double scale = (screenWidth / 390).clamp(0.8, 1.4);
-
-    // if (isLoading) {
-    //   return const Scaffold(
-    //     body: Center(child: CircularProgressIndicator()),
-    //   );
-    // }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -211,8 +267,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ),
               SizedBox(height: 32 * scale),
-
-              // 🧾 Họ và tên
               _label('Họ và tên', scale),
               _inputBox(
                 controller: _nameController,
@@ -220,8 +274,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 scale: scale,
               ),
               SizedBox(height: 16 * scale),
-
-              // ☎️ Số điện thoại
               _label('Số điện thoại', scale),
               _inputBox(
                 controller: _phoneController,
@@ -230,8 +282,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 keyboardType: TextInputType.phone,
               ),
               SizedBox(height: 16 * scale),
-
-              // 🏠 Địa chỉ
               _label('Địa chỉ', scale),
               _inputBox(
                 controller: _addressController,
@@ -240,8 +290,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 keyboardType: TextInputType.streetAddress,
               ),
               SizedBox(height: 40 * scale),
-
-              // ✅ Nút lưu
               Center(
                 child: SizedBox(
                   width: context.deviceSize.width * 0.6,
@@ -321,24 +369,4 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           : null,
     );
   }
-
-  Widget _infoBox(String text, double scale) => Container(
-        width: double.infinity,
-        padding:
-            EdgeInsets.symmetric(vertical: 14 * scale, horizontal: 4 * scale),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: Colors.grey.shade300, width: 0.8),
-          ),
-        ),
-        child: Text(
-          text,
-          style: GoogleFonts.lato(
-            fontSize: 16 * scale,
-            fontWeight: FontWeight.w400,
-            color: Colors.black,
-            height: 1.4,
-          ),
-        ),
-      );
 }

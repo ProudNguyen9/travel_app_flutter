@@ -16,11 +16,11 @@ class TourFull {
 
   // ===== Discount fields (from vw_tours_full) =====
   final int? bestDiscountId; // bv.discount_id
-  final int?
-      bestDiscountPeople; // bv.required_people (NULL/1 = 1 người; >=2 = nhóm)
+  final int? bestDiscountPeople; // bv.required_people (NULL/1 = 1 người; >=2 = nhóm)
   final String? bestDiscountType; // 'percent' | 'fixed'
   final double? bestDiscountValue; // % hoặc số tiền
   final double? bestDiscountCap; // trần (nếu percent)
+  final int? bestDiscountEarlyDays; // bv.early_booking_days
 
   TourFull({
     required this.tourId,
@@ -42,6 +42,7 @@ class TourFull {
     this.bestDiscountType,
     this.bestDiscountValue,
     this.bestDiscountCap,
+    this.bestDiscountEarlyDays,
   });
 
   factory TourFull.fromMap(Map<String, dynamic> j) {
@@ -87,6 +88,7 @@ class TourFull {
       bestDiscountType: j['best_discount_type'],
       bestDiscountValue: toDouble(j['best_discount_value']),
       bestDiscountCap: toDouble(j['best_discount_cap']),
+      bestDiscountEarlyDays: toInt(j['best_discount_early_days']),
     );
   }
 
@@ -111,6 +113,7 @@ class TourFull {
         'best_discount_type': bestDiscountType,
         'best_discount_value': bestDiscountValue,
         'best_discount_cap': bestDiscountCap,
+        'best_discount_early_days': bestDiscountEarlyDays,
       };
 
   TourFull copyWith({
@@ -135,6 +138,7 @@ class TourFull {
     String? bestDiscountType,
     double? bestDiscountValue,
     double? bestDiscountCap,
+    int? bestDiscountEarlyDays,
   }) {
     return TourFull(
       tourId: tourId ?? this.tourId,
@@ -158,6 +162,7 @@ class TourFull {
       bestDiscountType: bestDiscountType ?? this.bestDiscountType,
       bestDiscountValue: bestDiscountValue ?? this.bestDiscountValue,
       bestDiscountCap: bestDiscountCap ?? this.bestDiscountCap,
+      bestDiscountEarlyDays: bestDiscountEarlyDays ?? this.bestDiscountEarlyDays,
     );
   }
 

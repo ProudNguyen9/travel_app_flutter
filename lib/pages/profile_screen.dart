@@ -110,7 +110,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ? null
                   : (user?.profileImage != null
                       ? NetworkImage(user!.profileImage!)
-                      : const AssetImage('assets/images/main.png')
+                      : const AssetImage('assets/images/splash1.png')
                           as ImageProvider),
               backgroundColor: Colors.grey[200],
             ),

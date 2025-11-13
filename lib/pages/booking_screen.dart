@@ -43,12 +43,14 @@ class _BookingTourScreenState extends State<BookingTourScreen> {
   // ==== helpers ====
   bool _sameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
-
-  bool _isFutureOrToday(DateTime d) {
+// NGÀY ĐƯỢC PHÉP CHỌN = hôm nay + 3 ngày trở đi
+  bool _isSelectableDay(DateTime d) {
     final now = DateTime.now();
-    final n = DateTime(now.year, now.month, now.day);
+    final today = DateTime(now.year, now.month, now.day);
+    final minStart = today.add(const Duration(days: 3)); // 👈 +3 ngày
+
     final x = DateTime(d.year, d.month, d.day);
-    return !x.isBefore(n);
+    return !x.isBefore(minStart); // chỉ cho chọn nếu >= minStart
   }
 
   int get _maxPeople => widget.tour.maxParticipants ?? 10; // fallback 10
@@ -284,8 +286,8 @@ class _BookingTourScreenState extends State<BookingTourScreen> {
                       _sameDay(_endDate!, day);
                   final inRange = _startDate != null && _inSelectedRange(day);
 
-                  // selectable: ngày trong tháng đang xem + từ hôm nay trở đi
-                  final selectable = inMonth && _isFutureOrToday(day);
+                  // selectable: ngày trong tháng đang xem + từ hôm nay + 3 ngày trở đi
+                  final selectable = inMonth && _isSelectableDay(day);
 
                   Color bg;
                   Color textColor;

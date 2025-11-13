@@ -102,7 +102,7 @@ class _FavoriteTourScreenState extends State<FavoriteTourScreen> {
                   final favorites = snapshot.data ?? [];
                   if (favorites.isEmpty) {
                     return const Center(
-                      child: Text("Chưa có tour yêu thích nào 🩵"),
+                      child: Text("Chưa có tour yêu thích nào "),
                     );
                   }
 

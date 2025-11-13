@@ -472,7 +472,7 @@ class PriceMeta {
 
 PriceMeta computePriceMeta(TourFull t) {
   double base = (t.basePriceAdult ?? 0).toDouble();
-  final String? discountType = t.bestDiscountType; // 'percent' | 'fixed' | null
+  final String? discountType = t.bestDiscountType;
   final double? discountValue = (t.bestDiscountValue is num)
       ? (t.bestDiscountValue as num).toDouble()
       : double.tryParse('${t.bestDiscountValue}');
@@ -480,12 +480,12 @@ PriceMeta computePriceMeta(TourFull t) {
       ? (t.bestDiscountCap as num).toDouble()
       : double.tryParse('${t.bestDiscountCap}');
   final int groupMin = (t.bestDiscountPeople ?? 1);
+  final int? earlyDays = t.bestDiscountEarlyDays; // thêm dòng này
 
   bool hasDiscount =
       t.bestDiscountId != null && discountType != null && base > 0;
   if (!hasDiscount) return PriceMeta(base, base, false, null);
 
-  // Tính số tiền giảm
   double off = 0;
   String badge;
   if (discountType == 'percent') {
@@ -502,6 +502,11 @@ PriceMeta computePriceMeta(TourFull t) {
 
   // Thêm nhãn nhóm nếu yêu cầu > 1
   if (groupMin > 1) badge = '$badge  nhóm $groupMin+';
+
+  // ===== Thêm nhãn đặt sớm =====
+  if (earlyDays != null && earlyDays > 0) {
+    badge = '$badge Đặt trước $earlyDays ngày';
+  }
 
   return PriceMeta(base, finalPrice, true, badge);
 }

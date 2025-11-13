@@ -70,35 +70,15 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
     });
 
     try {
-      // ✅ Lấy danh sách giảm giá (cả hidden)
+      // Chỉ load từ service — không lọc gì cả
       final allList = await _svc.fetchValidDiscounts(
         tourId: widget.tourId,
-        atDate: widget.travelDate,
-        people: widget.people, // 👈 truyền số người
       );
-
-      // ✅ Lọc bỏ mã ẩn
-      final visibleList = allList.where((x) {
-        final validPeople = x.people == null || x.people == widget.people;
-        return x.hidden == false &&
-            validPeople; // 👈 chỉ giữ mã có cùng số người hoặc không giới hạn
-      }).toList();
-
-      Discount? preselected;
-      if ((widget.initialCode ?? '').trim().isNotEmpty) {
-        final u = widget.initialCode!.trim().toUpperCase();
-        final found = allList.where((x) => x.code.toUpperCase() == u);
-        preselected = found.isNotEmpty
-            ? found.first
-            : (visibleList.isNotEmpty ? visibleList.first : null);
-      } else {
-        preselected = visibleList.isNotEmpty ? visibleList.first : null;
-      }
 
       if (!mounted) return;
       setState(() {
-        _items = visibleList;
-        _selected = preselected;
+        _items = allList; // giữ nguyên danh sách gốc
+        _selected = null; // chưa chọn gì cả
         _loading = false;
       });
     } catch (e) {
@@ -814,11 +794,10 @@ class _SimpleVoucherCard extends StatelessWidget {
                       ),
                     ],
 
-                    if (discount.max_discount != null &&
-                        discount.isPercent) ...[
+                    if (discount.maxDiscount != null && discount.isPercent) ...[
                       const SizedBox(height: 4),
                       Text(
-                        'Giảm tối đa: ${NumberFormat.currency(locale: "vi_VN", symbol: "₫", decimalDigits: 0).format(discount.max_discount)}',
+                        'Giảm tối đa: ${NumberFormat.currency(locale: "vi_VN", symbol: "₫", decimalDigits: 0).format(discount.maxDiscount)}',
                         style: GoogleFonts.lato(
                           color: Colors.blueGrey[600],
                           fontSize: 12.5,

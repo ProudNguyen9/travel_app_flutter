@@ -7,7 +7,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:travel_app/data/models/tour_full.dart';
 import 'package:travel_app/data/services/profile_service.dart';
 import 'package:travel_app/data/services/tour_pricing_service.dart';
+import 'package:travel_app/pages/discount_picker_screen.dart';
 import 'package:travel_app/pages/price_detail_screen.dart';
+
+import 'screen.dart';
 
 class PaymentTourScreen extends StatefulWidget {
   const PaymentTourScreen({
@@ -35,7 +38,7 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
   // ===== Booker info (UI only) =====
   final _nameCtl = TextEditingController();
   final _phoneCtl = TextEditingController();
-  final _emailCtl = TextEditingController();
+  final _addressCtl = TextEditingController();
   bool _profileOK = false;
 
   // ===== Định dạng tiền =====
@@ -48,7 +51,9 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
 
   // ===== Thuế/giảm giá (demo) =====
   final double _vatPercent = 10;
-  static const int _discountVnd = 0;
+  // Mã giảm giá đã chọn
+  String? _discountCode;
+  int _discountVnd = 0; // số tiền giảm hiện tại (VNĐ)
 
   // ===== Counters hiển thị (khởi tạo từ tham số) =====
   late int youth; // trẻ em
@@ -102,20 +107,99 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
       '$youth Trẻ em, $adult Người lớn, $senior Người cao tuổi';
 
   // UI-only validators
-  bool _isValidEmail(String s) =>
-      RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(s);
-  bool _isValidPhone(String s) => RegExp(r'^0\d{9,10}$').hasMatch(s);
+  // call picker discount
+  Future<void> _openDiscountPicker() async {
+    final people = adult + youth + senior;
+
+    if (people <= 0) {
+      _toast('Vui lòng chọn ít nhất 1 hành khách trước khi dùng mã giảm giá.');
+      return;
+    }
+
+    final result = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DiscountPickerScreen(
+          tourId: widget.tour.tourId,
+          travelDate: DateTime.now(),
+          initialCode: _discountCode,
+          people: people,
+        ),
+      ),
+    );
+
+    // Người dùng bấm close hoặc không chọn gì
+    if (result == null) return;
+
+    final code = result['code'] as String?;
+    final bool isPercent = result['is_percent'] == true;
+
+    int discountValue = 0;
+
+    if (isPercent) {
+      final percent = (result['percent'] ?? 0) as num;
+      discountValue = ((_peopleSubtotal * percent) / 100).round();
+    } else {
+      final dynamic rawAmount = result['amount'];
+      final int amount =
+          rawAmount is int ? rawAmount : (rawAmount as num?)?.toInt() ?? 0;
+      discountValue = amount;
+    }
+
+    // Không cho giảm quá tổng tiền (phòng bug)
+    final maxDiscount = _peopleSubtotal + _vatAmount;
+
+    setState(() {
+      _discountCode = code;
+      _discountVnd = discountValue.clamp(0, maxDiscount);
+    });
+
+    if (code != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('✅ Đã áp dụng mã $code.')),
+      );
+    }
+  }
+
 // call data user
 
-  void _updateBookerInfo() {
-    final ok = _nameCtl.text.trim().length >= 2 &&
-        _isValidPhone(_phoneCtl.text.trim()) &&
-        _isValidEmail(_emailCtl.text.trim());
-    setState(() => _profileOK = ok);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(ok
-            ? 'Đã cập nhật thông tin người đặt.'
-            : 'Thông tin chưa hợp lệ.')));
+  Future<void> _updateBookerInfo() async {
+    // Lưu lại dữ liệu hiện tại trước khi đi chỉnh sửa
+    final beforeName = _nameCtl.text.trim();
+    final beforePhone = _phoneCtl.text.trim();
+    final beforeAddress = _addressCtl.text.trim();
+
+    // Mở màn chỉnh sửa hồ sơ
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const EditProfileScreen(),
+      ),
+    );
+
+    // Nếu bên EditProfile cập nhật thành công: Navigator.pop(context, true);
+    if (result == true) {
+      await loadAndFillBookerInfo(); // load lại dữ liệu user vào Payment
+      if (!mounted) return;
+
+      // So sánh sau khi load lại
+      final afterName = _nameCtl.text.trim();
+      final afterPhone = _phoneCtl.text.trim();
+      final afterAddress = _addressCtl.text.trim();
+
+      final changed = afterName != beforeName ||
+          afterPhone != beforePhone ||
+          afterAddress != beforeAddress;
+
+      // Chỉ hiện thông báo nếu thực sự có thay đổi
+      if (changed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Đã cập nhật thông tin người đặt từ hồ sơ.'),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> loadAndFillBookerInfo() async {
@@ -126,12 +210,12 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
     // Gán dữ liệu vào TextField
     _nameCtl.text = profile.name ?? '';
     _phoneCtl.text = profile.phone ?? '';
-    _emailCtl.text = profile.email ?? '';
+    _addressCtl.text = profile.address ?? '';
     final hasName = (profile.name?.trim().isNotEmpty ?? false);
     final hasPhone = (profile.phone?.trim().isNotEmpty ?? false);
-    final hasEmail = (profile.email?.trim().isNotEmpty ?? false);
+    final hasAddress = (profile.address?.trim().isNotEmpty ?? false);
 
-    bool check = hasName && hasPhone && hasEmail;
+    bool check = hasName && hasPhone && hasAddress;
     if (check != false) {
       _profileOK = true;
     }
@@ -264,7 +348,7 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
   void dispose() {
     _nameCtl.dispose();
     _phoneCtl.dispose();
-    _emailCtl.dispose();
+    _addressCtl.dispose();
     super.dispose();
   }
 
@@ -374,7 +458,7 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
                 _SectionCard(
                   title: 'Thông tin người đặt',
                   caption:
-                      'Điền đủ Họ tên, Số điện thoại, Email để tiếp tục thanh toán.',
+                      'Điền đủ Họ tên, Số điện thoại, địa chỉ để tiếp tục thanh toán.',
                   child: Column(
                     children: [
                       _TextFieldRow(
@@ -390,8 +474,8 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
                           hint: 'Vui lòng cập nhật !'),
                       const Gap(5),
                       _TextFieldRow(
-                          label: 'Email',
-                          controller: _emailCtl,
+                          label: 'Địa chỉ',
+                          controller: _addressCtl,
                           keyboardType: TextInputType.emailAddress,
                           hint: 'Vui lòng cập nhật !'),
                       const Gap(5),
@@ -532,6 +616,97 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
                           ),
                         ),
                       ),
+                    ],
+                  ),
+                ),
+
+                const Gap(16),
+                // ===== Mã giảm giá =====
+                _SectionCard(
+                  title: 'Mã giảm giá',
+                  caption:
+                      'Chọn mã khuyến mãi phù hợp với số lượng hành khách.',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _discountCode == null
+                                ? Text(
+                                    'Chưa áp dụng mã nào',
+                                    style: GoogleFonts.lato(
+                                      fontSize: 13,
+                                      color: const Color(0xFF5E6A7D),
+                                    ),
+                                  )
+                                : Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Mã: $_discountCode',
+                                        style: GoogleFonts.lato(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: const Color(0xFF24BAEC),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Giảm: ${_fmt.format(_discountVnd)}',
+                                        style: GoogleFonts.lato(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF1B1E28),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            onPressed: _openDiscountPicker,
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFF24BAEC)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 12),
+                            ),
+                            icon: const Icon(Icons.local_offer_outlined,
+                                size: 18, color: Color(0xFF24BAEC)),
+                            label: Text(
+                              _discountCode == null ? 'Chọn mã' : 'Đổi mã',
+                              style: GoogleFonts.lato(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF24BAEC),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_discountCode != null) ...[
+                        const SizedBox(height: 4),
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _discountCode = null;
+                              _discountVnd = 0;
+                            });
+                          },
+                          child: Text(
+                            'Xóa mã giảm giá',
+                            style: GoogleFonts.lato(
+                              fontSize: 12,
+                              color: Colors.redAccent,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -925,7 +1100,7 @@ class _TextFieldRow extends StatelessWidget {
 
   IconData _getIcon() {
     if (keyboardType == TextInputType.phone) return Icons.phone_rounded;
-    if (keyboardType == TextInputType.emailAddress) return Icons.email_rounded;
+    if (keyboardType == TextInputType.emailAddress) return Icons.location_city;
     return Icons.person_rounded;
   }
 
