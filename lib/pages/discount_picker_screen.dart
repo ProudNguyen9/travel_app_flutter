@@ -85,6 +85,7 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
 
     setState(() => _validating = true);
     try {
+      // Lấy mã từ Supabase
       final res = await Supabase.instance.client
           .from('discounts')
           .select()
@@ -96,9 +97,13 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
         );
         return;
       }
+
       final d = Discount.fromJson(res);
 
-      // Kiểm tra tour
+      // ===================== KIỂM TRA ĐIỀU KIỆN =====================
+      final now = DateTime.now();
+
+      // 1. Mã có đúng tour không
       if (d.tourId != widget.tourId) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -109,10 +114,16 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
         return;
       }
 
-      final now = DateTime.now();
+      // 2. Hết hạn
       final expired = d.endDate != null && d.endDate!.isBefore(now);
+
+      // 3. Hết lượt sử dụng
       final noUsage = d.usageLimit != null && d.usageLimit == 0;
-      final wrongPeople = d.people != null && d.people != widget.people;
+
+      // 4. Không đủ người áp dụng
+      final wrongPeople = d.people != null && widget.people < d.people!;
+
+      // 5. Đặt quá muộn (earlyBookingDays)
       bool tooLate = false;
       if (d.earlyBookingDays != null) {
         final limitDate =
@@ -132,10 +143,10 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
             '⏰ Mã ${d.code} yêu cầu đặt sớm hơn ${d.earlyBookingDays} ngày!';
 
       // Thêm vào danh sách nếu chưa có
-      final exists =
-          _items.any((x) => x.code.toUpperCase() == d.code.toUpperCase());
+      final exists = _items.any((x) => x.discountId == d.discountId);
       if (!exists) _items.insert(0, d);
 
+      // Chọn nếu hợp lệ
       if (warning != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -151,8 +162,10 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
         );
       }
 
+      // Scroll tới mã vừa thêm
       await Future.delayed(const Duration(milliseconds: 150));
-      final idx = _filteredItems.indexWhere((x) => x.code == d.code);
+      final idx =
+          _filteredItems.indexWhere((x) => x.discountId == d.discountId);
       if (idx >= 0 && _scrollCtl.hasClients) {
         _scrollCtl.animateTo(
           (idx * 120).clamp(0, _scrollCtl.position.maxScrollExtent).toDouble(),
@@ -171,17 +184,22 @@ class _DiscountPickerScreenState extends State<DiscountPickerScreen> {
   void _popSelected() {
     final d = _selected;
     if (d == null) return;
+
     final result = {
+      'discount_id': d.discountId, // ID để bên kia lấy
       'code': d.code,
       'is_percent': d.isPercent,
       'percent': d.isPercent ? d.value : null,
       'amount': d.isPercent ? null : d.value,
       'name': d.name,
       'description': d.description,
-      'discount_id': d.discountId,
       'start_date': d.startDate?.toIso8601String(),
       'end_date': d.endDate?.toIso8601String(),
+      'min_people': d.people, // thêm số lượng tối thiểu
+      'max_discount': d.maxDiscount, // số tiền giảm tối đa á
     };
+
+    print('hehe: ${d.maxDiscount}');
     Navigator.pop(context, result);
   }
 
@@ -403,7 +421,7 @@ class _SimpleVoucherCard extends StatelessWidget {
     final now = DateTime.now();
     final expired = discount.endDate != null && discount.endDate!.isBefore(now);
     final noUsage = discount.usageLimit != null && discount.usageLimit == 0;
-    final wrongPeople = discount.people != null && discount.people != people;
+    final wrongPeople = discount.people != null && people < discount.people!;
 
     bool tooLate = false;
     if (discount.earlyBookingDays != null) {
@@ -421,7 +439,7 @@ class _SimpleVoucherCard extends StatelessWidget {
       warningLabel = 'Hết lượt';
     else if (wrongPeople)
       warningLabel = 'Không đủ người';
-    else if (tooLate) warningLabel = 'Đặt quá muộn';
+    else if (tooLate) warningLabel = 'Cần đặt sớm hơn';
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),

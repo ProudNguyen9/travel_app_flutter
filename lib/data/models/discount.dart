@@ -8,7 +8,7 @@ DiscountType _discountTypeFrom(dynamic v) {
 }
 
 class Discount {
-  final int discountId;
+  final int? discountId;
   final int tourId;
   final String code;
   final String? name;
@@ -84,7 +84,7 @@ class Discount {
       usageLimit: toInt(json['usage_limit']),
       earlyBookingDays: toInt(json['early_booking_days']),
       maxDiscount: toDouble(json['max_discount']),
-      people: toInt(json['people']),
+      people: toInt(json['min_people']),
     );
   }
 

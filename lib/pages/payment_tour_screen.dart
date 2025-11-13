@@ -5,11 +5,13 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:travel_app/data/models/tour_full.dart';
+import 'package:travel_app/data/services/booking_service.dart';
 import 'package:travel_app/data/services/profile_service.dart';
 import 'package:travel_app/data/services/tour_pricing_service.dart';
 import 'package:travel_app/pages/discount_picker_screen.dart';
 import 'package:travel_app/pages/price_detail_screen.dart';
 
+import '../data/data.dart';
 import 'screen.dart';
 
 class PaymentTourScreen extends StatefulWidget {
@@ -50,17 +52,24 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
   static const double _kSeniorMultiplier = 0.85; // 85% người lớn
 
   // ===== Thuế/giảm giá (demo) =====
-  final double _vatPercent = 10;
-  // Mã giảm giá đã chọn
+  final double _vatPercent = 8;
+  // ===== Mã giảm giá đã chọn =====
   String? _discountCode;
-  int _discountVnd = 0; // số tiền giảm hiện tại (VNĐ)
+  int _discountId = 0;
+  int _discountVnd = 0;
 
-  // ===== Counters hiển thị (khởi tạo từ tham số) =====
+// ===== Thông tin chi tiết discount =====
+  bool _discountIsPercent = false;
+  double? _discountPercent;
+  int? _discountAmount;
+  int? _discountMinPeople;
+  int? _discountMax;
+  // ===== Counters hiển thị =====
   late int youth; // trẻ em
   late int adult; // người lớn
   late int senior; // người già
 
-  // ===== Đơn giá (được load từ RPC = sum các activity) =====
+  // ===== Đơn giá  =====
   int _unitAdult = 0;
   int _unitChild = 0;
   int _unitSenior = 0;
@@ -133,25 +142,46 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
 
     final code = result['code'] as String?;
     final bool isPercent = result['is_percent'] == true;
-
-    int discountValue = 0;
-
-    if (isPercent) {
-      final percent = (result['percent'] ?? 0) as num;
-      discountValue = ((_peopleSubtotal * percent) / 100).round();
-    } else {
-      final dynamic rawAmount = result['amount'];
-      final int amount =
-          rawAmount is int ? rawAmount : (rawAmount as num?)?.toInt() ?? 0;
-      discountValue = amount;
+    final discountId = result['discount_id'] as int?;
+    final minPeople = result['min_people'] as int? ?? 0;
+    final maxDiscount = (result['max_discount'] as num?)?.toInt();
+    final percent = (result['percent'] as num?)?.toDouble();
+    final amount = (result['amount'] as num?)?.toInt();
+    print('hhhhhhhhh$maxDiscount');
+    // ✅ Kiểm tra số người có đủ điều kiện áp dụng mã không
+    if (people < minPeople) {
+      _toast(
+        '❌ Mã này yêu cầu tối thiểu $minPeople người. Vui lòng chọn thêm hành khách.',
+      );
+      return;
     }
 
-    // Không cho giảm quá tổng tiền (phòng bug)
-    final maxDiscount = _peopleSubtotal + _vatAmount;
+    // ✅ Tính giá trị giảm
+    int discountValue = 0;
+    if (isPercent) {
+      discountValue = ((_peopleSubtotal * (percent ?? 0)) / 100).round();
+    } else {
+      discountValue = amount ?? 0;
+    }
+
+    // ✅ Giới hạn bởi max_discount nếu có
+    if (maxDiscount != null) {
+      discountValue = discountValue.clamp(0, maxDiscount);
+    }
+
+    // ✅ Không vượt quá tổng tiền
+    final totalBeforeDiscount = _peopleSubtotal + _vatAmount;
+    discountValue = discountValue.clamp(0, totalBeforeDiscount);
 
     setState(() {
+      _discountId = discountId!;
       _discountCode = code;
-      _discountVnd = discountValue.clamp(0, maxDiscount);
+      _discountVnd = discountValue;
+      _discountIsPercent = isPercent;
+      _discountPercent = percent;
+      _discountAmount = amount;
+      _discountMinPeople = minPeople;
+      _discountMax = maxDiscount;
     });
 
     if (code != null) {
@@ -159,6 +189,42 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
         SnackBar(content: Text('✅ Đã áp dụng mã $code.')),
       );
     }
+  }
+
+//tính discount lại
+  void _recalculateDiscount() {
+    final totalPeople = adult + youth + senior;
+
+    // Nếu chưa có mã hoặc số người không đủ, reset discount
+    if (_discountCode == null ||
+        _discountMinPeople == null ||
+        totalPeople < _discountMinPeople!) {
+      setState(() {
+        _discountVnd = 0;
+        _discountCode = null; // optional: tự xóa code nếu không hợp lệ
+      });
+      return;
+    }
+
+    int discount = 0;
+
+    if (_discountIsPercent) {
+      // Giảm theo %
+      final percent = _discountPercent ?? 0;
+      discount = ((_peopleSubtotal * percent) / 100).round();
+    } else {
+      // Giảm tiền cố định
+      discount = _discountAmount ?? 0;
+    }
+
+    // Không vượt quá max_discount
+    if (_discountMax != null) {
+      discount = discount.clamp(0, _discountMax!);
+    }
+
+    setState(() {
+      _discountVnd = discount;
+    });
   }
 
 // call data user
@@ -228,6 +294,7 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
         if (type == 'youth') youth++;
         if (type == 'adult') adult++;
         if (type == 'senior') senior++;
+        _recalculateDiscount();
       });
 
   void _toast(String msg) {
@@ -259,6 +326,7 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
                 'Vui lòng đảm bảo có ít nhất một người lớn hoặc một người cao tuổi trong đoàn.');
           }
         }
+        _recalculateDiscount();
       });
 
   // ====== Mở màn hình bảng giá chi tiết (main hình giá) ======
@@ -358,6 +426,51 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
     const divider = Divider(height: 1, color: Color(0xFFE8E8E8));
     final tourTitle = widget.tour.name;
     final tourImage = widget.tour.imageUrl;
+//tạo booking
+    Future<void> handlePayment() async {
+      if (!_profileOK) {
+        _toast('Vui lòng cập nhật thông tin người đặt trước khi thanh toán.');
+        return;
+      }
+
+      // Load profile hiện tại
+      final profile = await ProfileService().getCurrentUserProfile();
+      if (profile == null || profile.userId == null) {
+        _toast('Không lấy được thông tin người dùng. Vui lòng đăng nhập lại.');
+        return;
+      }
+
+      final booking = Booking(
+        tourId: widget.tour.tourId,
+        userId: profile.userId!,
+        startDate: widget.startDate,
+        endDate: _endDate,
+        taxAmount: _vatAmount,
+        taxRate: _vatPercent,
+        adultCount: adult,
+        childCount: youth,
+        elderlyCount: senior,
+        discountId: _discountId,
+        createdAt: DateTime.now(),
+        discountCode: _discountCode,
+        discountAmount: _discountVnd.toDouble(),
+        finalAmount: _grandTotal.toDouble(),
+        status: 'CHUA_THANH_TOAN',
+      );
+
+      final success = await BookingService().createBooking(booking);
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('✅ Booking thành công!')),
+        );
+        Navigator.pop(context); // quay lại màn trước
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('❌ Booking thất bại, thử lại sau.')),
+        );
+      }
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -809,12 +922,20 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 24),
                           ),
                           onPressed: _profileOK
-                              ? () => ScaffoldMessenger.of(context)
-                                  .showSnackBar(const SnackBar(
-                                      content: Text(
-                                          'Đang xử lý thanh toán (UI demo)...')))
+                              ? () async {
+                                  // Hiển thị loading tạm thời
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Đang xử lý booking...'),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+
+                                  // Gọi hàm tạo booking
+                                  await handlePayment();
+                                }
                               : null,
-                          child: Text('Thanh toán',
+                          child: Text('Tiếp tục',
                               style: GoogleFonts.lato(
                                   fontSize: 18,
                                   color: Colors.white,
