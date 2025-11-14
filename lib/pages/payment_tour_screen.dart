@@ -461,13 +461,11 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
       final success = await BookingService().createBooking(booking);
 
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Booking thành công!')),
-        );
-        Navigator.pop(context); // quay lại màn trước
+        Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const ChooseMethodPayScreen()));
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('❌ Booking thất bại, thử lại sau.')),
+          const SnackBar(content: Text('❌ Lỗi hệ thống,Vui lòng thử lại sau.')),
         );
       }
     }

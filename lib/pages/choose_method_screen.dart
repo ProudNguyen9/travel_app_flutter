@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:travel_app/pages/payment_tour_screen.dart';
 import 'package:travel_app/utils/extensions.dart';
 
 class ChooseMethodPayScreen extends StatefulWidget {
@@ -64,10 +62,10 @@ class _ChooseMethodPayScreenState extends State<ChooseMethodPayScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // ==== MOMO ====
+                  // ==== zalopay ====
                   GestureDetector(
                     onTap: () {
-                      setState(() => selected = "momo");
+                      setState(() => selected = "zalopay");
                     },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
@@ -78,8 +76,9 @@ class _ChooseMethodPayScreenState extends State<ChooseMethodPayScreen> {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(21),
                         border: Border.all(
-                          color:
-                              selected == "momo" ? primary : Colors.transparent,
+                          color: selected == "zalopay"
+                              ? primary
+                              : Colors.transparent,
                           width: 1.8,
                         ),
                         boxShadow: [
@@ -94,7 +93,7 @@ class _ChooseMethodPayScreenState extends State<ChooseMethodPayScreen> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(21),
                         child: Image.asset(
-                          'assets/images/momo.png',
+                          'assets/icons/zalopay.png',
                           fit: BoxFit.cover,
                         ),
                       ),
