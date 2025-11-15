@@ -40,7 +40,10 @@ dependencies:
   cached_network_image: ^3.4.1
   image_picker: ^1.0.7
   flutter_zalopay_sdk: ^0.1.14
-  
+  path_provider: ^2.1.0
+  syncfusion_flutter_pdfviewer: ^31.1.19
+  syncfusion_flutter_pdf: ^31.1.19
+  hand_signature: ^3.1.0+2
 
 dev_dependencies:
   flutter_test:
@@ -54,6 +57,7 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+    - assets/docx/
 
   # fonts:
   #   - family: Schyler

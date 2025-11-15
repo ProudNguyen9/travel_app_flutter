@@ -21,4 +21,5 @@ export 'bookings_history_screen.dart';
 export 'booking_confirmed_screen.dart';
 export 'booking_screen.dart';
 export 'price_detail_screen.dart';
+export 'contract_screen.dart';
 

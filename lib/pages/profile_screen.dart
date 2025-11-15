@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:travel_app/pages/TestZaloPayPage.dart';
 import 'package:travel_app/utils/extensions.dart';
 import '../data/models/user_model.dart';
 import '../data/services/profile_service.dart';
@@ -36,7 +37,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _navigateToEdit() async {
     final updated = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+      MaterialPageRoute(builder: (_) => const TestZaloPayPage()),
     );
 
     // Dù cập nhật thông tin hay chỉ đổi ảnh → luôn reload lại dữ liệu

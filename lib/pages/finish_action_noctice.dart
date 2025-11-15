@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:travel_app/widget/nav_bottom.dart';
 
 class FinishActionNoticeScreen extends StatelessWidget {
-  const FinishActionNoticeScreen({super.key});
+   final String email ;
+   
+  const FinishActionNoticeScreen({super.key, required this.email});
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +36,7 @@ class FinishActionNoticeScreen extends StatelessWidget {
             ),
             Image.asset('assets/icons/success.png'),
             Text(
-              "Email xác nhận đã được gửi đến\nabisolasherif23@gmail.com",
+              "Chúng tôi đã gửi thông tin giao dịch về email :\n$email",
               textAlign: TextAlign.center,
               style: GoogleFonts.lato(
                 fontSize: 14,
@@ -43,7 +46,12 @@ class FinishActionNoticeScreen extends StatelessWidget {
             ),
             const Gap(40),
             OutlinedButton(
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const SimpleBottomScaffold()));
+              },
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Color(0xFF24BAEC), width: 1),
                 shape: RoundedRectangleBorder(

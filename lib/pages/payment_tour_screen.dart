@@ -42,7 +42,7 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
   final _phoneCtl = TextEditingController();
   final _addressCtl = TextEditingController();
   bool _profileOK = false;
-
+  bool isProcessing = false;
   // ===== Định dạng tiền =====
   final _fmt =
       NumberFormat.currency(locale: 'vi_VN', symbol: '₫', decimalDigits: 0);
@@ -428,47 +428,66 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
     final tourImage = widget.tour.imageUrl;
 //tạo booking
     Future<void> handlePayment() async {
-      if (!_profileOK) {
-        _toast('Vui lòng cập nhật thông tin người đặt trước khi thanh toán.');
-        return;
-      }
+  if (!_profileOK) {
+    _toast('Vui lòng cập nhật thông tin người đặt trước khi thanh toán.');
+    return;
+  }
 
-      // Load profile hiện tại
-      final profile = await ProfileService().getCurrentUserProfile();
-      if (profile == null || profile.userId == null) {
-        _toast('Không lấy được thông tin người dùng. Vui lòng đăng nhập lại.');
-        return;
-      }
+  setState(() => isProcessing = true);
 
-      final booking = Booking(
-        tourId: widget.tour.tourId,
-        userId: profile.userId!,
-        startDate: widget.startDate,
-        endDate: _endDate,
-        taxAmount: _vatAmount,
-        taxRate: _vatPercent,
-        adultCount: adult,
-        childCount: youth,
-        elderlyCount: senior,
-        discountId: _discountId,
-        createdAt: DateTime.now(),
-        discountCode: _discountCode,
-        discountAmount: _discountVnd.toDouble(),
-        finalAmount: _grandTotal.toDouble(),
-        status: 'CHUA_THANH_TOAN',
-      );
-
-      final success = await BookingService().createBooking(booking);
-
-      if (success) {
-        Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const ChooseMethodPayScreen()));
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('❌ Lỗi hệ thống,Vui lòng thử lại sau.')),
-        );
-      }
+  try {
+    final profile = await ProfileService().getCurrentUserProfile();
+    if (profile == null || profile.userId == null) {
+      _toast('Không lấy được thông tin người dùng.');
+      setState(() => isProcessing = false);
+      return;
     }
+
+    /// ====== Tạo object Booking nhưng chưa có bookingId ======
+    Booking booking = Booking(
+      tourId: widget.tour.tourId,
+      userId: profile.userId!,
+      startDate: widget.startDate,
+      childPrice: _unitChild,
+      adultPrice: _unitAdult,
+      elderlyPrice: _unitSenior,
+      endDate: _endDate,
+      taxAmount: _vatAmount,
+      taxRate: _vatPercent,
+      adultCount: adult,
+      childCount: youth,
+      elderlyCount: senior,
+      discountId: _discountId,
+      createdAt: DateTime.now(),
+      discountCode: _discountCode,
+      discountAmount: _discountVnd.toDouble(),
+      finalAmount: _grandTotal.toDouble(),
+      status: 'CHUA_THANH_TOAN',
+    );
+
+    /// ====== Tạo booking trong DB và nhận về bookingId ======
+    final int? bookingId = await BookingService().createBooking(booking);
+
+    if (bookingId == null) {
+      _toast('❌ Lỗi hệ thống. Không tạo được booking.');
+      setState(() => isProcessing = false);
+      return;
+    }
+
+    /// ====== GÁN bookingId mới vào booking ======
+    booking = booking.copyWith(bookingId: bookingId);
+
+    /// ====== Mở màn hình hợp đồng ======
+    await showContractPdf(
+      context,
+      booking: booking,
+      user: profile,
+      tourName: widget.tour.name,
+    );
+  } finally {
+    setState(() => isProcessing = false);
+  }
+}
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -909,37 +928,54 @@ class _PaymentTourScreenState extends State<PaymentTourScreen> {
                         ),
                       ),
                       SizedBox(
-                        height: 48,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _profileOK
-                                ? const Color(0xFF24BAEC)
-                                : const Color(0xFFBFC6D0),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(34)),
-                            padding: const EdgeInsets.symmetric(horizontal: 24),
-                          ),
-                          onPressed: _profileOK
-                              ? () async {
-                                  // Hiển thị loading tạm thời
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Đang xử lý booking...'),
-                                      duration: Duration(seconds: 2),
+                          height: 48,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _profileOK
+                                  ? const Color(0xFF24BAEC)
+                                  : const Color(0xFFBFC6D0),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(34)),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 24),
+                            ),
+                            onPressed: (_profileOK && !isProcessing)
+                                ? () async {
+                                    await handlePayment();
+                                  }
+                                : null,
+                            child: isProcessing
+                                ? Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        "Đang xử lý...",
+                                        style: GoogleFonts.lato(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : Text(
+                                    'Tiếp tục',
+                                    style: GoogleFonts.lato(
+                                      fontSize: 18,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w500,
                                     ),
-                                  );
-
-                                  // Gọi hàm tạo booking
-                                  await handlePayment();
-                                }
-                              : null,
-                          child: Text('Tiếp tục',
-                              style: GoogleFonts.lato(
-                                  fontSize: 18,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w500)),
-                        ),
-                      ),
+                                  ),
+                          )),
                     ],
                   ),
                 ],

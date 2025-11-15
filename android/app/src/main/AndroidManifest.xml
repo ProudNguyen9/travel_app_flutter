@@ -7,37 +7,57 @@
         android:icon="@mipmap/ic_launcher">
 
         <!-- MainActivity -->
-       <!-- Handle OAuth redirect (deeplink) trực tiếp trong MainActivity -->
-<activity
-    android:name=".MainActivity"
-    android:exported="true"
-    android:launchMode="singleTop"
-    android:theme="@style/LaunchTheme"
-    android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-    android:hardwareAccelerated="true"
-    android:windowSoftInputMode="adjustResize">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
 
-    <meta-data
-        android:name="io.flutter.embedding.android.NormalTheme"
-        android:resource="@style/NormalTheme" />
+            <!-- Theme Flutter -->
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
 
-    <!-- Màn hình khởi động chính -->
-    <intent-filter>
-        <action android:name="android.intent.action.MAIN" />
-        <category android:name="android.intent.category.LAUNCHER" />
-    </intent-filter>
+            <!-- Màn hình khởi động chính -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
 
-    <!-- Deeplink Supabase OAuth redirect -->
-    <intent-filter android:label="supabase-oauth">
-        <action android:name="android.intent.action.VIEW" />
-        <category android:name="android.intent.category.DEFAULT" />
-        <category android:name="android.intent.category.BROWSABLE" />
-        <data android:scheme="travelapp" android:host="login-callback" />
-    </intent-filter>
-</activity>
+            <!-- Deeplink Supabase OAuth redirect (giữ nguyên) -->
+            <intent-filter android:label="supabase-oauth">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="travelapp"
+                    android:host="login-callback" />
+            </intent-filter>
 
+            <!-- Deeplink ZaloPay App-to-App -->
+            <intent-filter android:label="zalopay-app">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="demozpdk"
+                    android:host="app" />
+            </intent-filter>
 
-      
+            <!-- Config cho flutter_zalopay_sdk (theo README GitHub) :contentReference[oaicite:0]{index=0} -->
+            <meta-data
+                android:name="com.vng.zalo.sdk.APP_ID"
+                android:value="2554" />
+            <meta-data
+                android:name="com.vng.zalo.sdk.URI_SCHEME"
+                android:value="demozpdk://app" />
+            <meta-data
+                android:name="com.vng.zalo.sdk.ENVIRONMENT"
+                android:value="SANDBOX" />
+        </activity>
 
         <meta-data
             android:name="flutterEmbedding"
@@ -45,9 +65,14 @@
     </application>
 
     <queries>
+        <!-- Cái này bạn đang dùng sẵn -->
         <intent>
-            <action android:name="android.intent.action.PROCESS_TEXT"/>
-            <data android:mimeType="text/plain"/>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
         </intent>
+
+        <!-- Cho phép app kiểm tra / mở ZaloPay -->
+        <package android:name="vn.com.vng.zalopay" />
+        <package android:name="vn.com.zalopay.android" />
     </queries>
 </manifest>

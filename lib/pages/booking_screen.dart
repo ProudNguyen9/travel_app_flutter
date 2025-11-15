@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:travel_app/data/models/tour_full.dart';
-import 'package:travel_app/pages/discount_picker_screen.dart';
 import 'package:travel_app/pages/payment_tour_screen.dart';
 import 'package:travel_app/utils/duration_formatter.dart';
 
