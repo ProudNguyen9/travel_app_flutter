@@ -50,60 +50,85 @@ class LocationCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ⭐ HÌNH ẢNH (GIỮ NGUYÊN SIZE, CHỈ THAY LOAD)
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  imagePath,
+                child: SizedBox(
                   width: 89,
                   height: 94,
-                  fit: BoxFit.cover,
+                  child: imagePath.startsWith("http")
+                      ? Image.network(
+                          imagePath,
+                          width: 89,
+                          height: 94,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Image.asset(
+                              "assets/images/default.png",
+                              fit: BoxFit.cover),
+                        )
+                      : Image.asset(
+                          imagePath,
+                          width: 89,
+                          height: 94,
+                          fit: BoxFit.cover,
+                        ),
                 ),
               ),
+
               const SizedBox(width: 10),
+
+              // ⭐ GIỮ Y NGUYÊN LAYOUT BÊN PHẢI – CHỈ THÊM FIX OVERFLOW
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min, // ⭐ NGĂN OVERFLOW DỌC
                   children: [
-                    // Ngày + Ngày/Tháng/Năm
                     Text(
                       day,
                       style: GoogleFonts.lato(
                         color: Colors.black87,
                         fontWeight: FontWeight.w700,
-                        fontSize: 14,
+                        fontSize: 12,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
+
                     Text(
                       date,
                       style: GoogleFonts.lato(
                         color: Colors.grey[700],
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w400,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 6),
 
-                    // Tên địa điểm
+                    // ⭐ TÊN ĐỊA ĐIỂM – THÊM GIỚI HẠN
                     Text(
                       title,
                       style: GoogleFonts.poppins(
                         color: Colors.black,
                         fontWeight: FontWeight.w600,
-                        fontSize: 15,
+                        fontSize: 12,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
+
                     const SizedBox(height: 4),
 
-                    // Khoảng cách + nút chi tiết
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        // Nút Chi tiết – giữ nguyên
                         GestureDetector(
                           onTap: onTap,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 5),
+                                horizontal: 5, vertical: 2),
                             decoration: BoxDecoration(
                               color: Colors.blueAccent,
                               borderRadius: BorderRadius.circular(10),
@@ -112,7 +137,7 @@ class LocationCard extends StatelessWidget {
                               'Chi tiết',
                               style: GoogleFonts.poppins(
                                 color: Colors.white,
-                                fontSize: 11,
+                                fontSize: 10,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),

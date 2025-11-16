@@ -37,7 +37,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _navigateToEdit() async {
     final updated = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const TestZaloPayPage()),
+      MaterialPageRoute(builder: (_) => const EditProfileScreen()),
     );
 
     // Dù cập nhật thông tin hay chỉ đổi ảnh → luôn reload lại dữ liệu

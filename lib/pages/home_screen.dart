@@ -5,9 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:travel_app/data/services/profile_service.dart';
 import 'package:travel_app/utils/duration_formatter.dart';
 
 import '../data/data.dart';
+import '../data/models/user_model.dart';
 import '../utils/utils.dart';
 import '../widget/painter.dart';
 import '../widget/reuseabale_middle_app_text.dart';
@@ -22,6 +25,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+  final profileService = ProfileService();
+  UserModel? user;
   late final TabController tabController;
   final EdgeInsetsGeometry padding =
       const EdgeInsets.symmetric(horizontal: 10.0);
@@ -36,7 +41,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void initState() {
     tabController = TabController(length: 3, vsync: this);
     _loadData();
+    _loadUser();
     super.initState();
+  }
+
+  Future<void> _loadUser() async {
+    user = await profileService.getCurrentUserProfile();
   }
 
   @override
@@ -75,7 +85,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const HeaderRow(),
+                      HeaderRow(
+                        userName: user?.name,
+                      ),
                       const Gap(10),
                       FadeInUp(
                           delay: const Duration(milliseconds: 300),
@@ -889,7 +901,8 @@ class CardItemForYou extends StatelessWidget {
 
 // appbar
 class HeaderRow extends StatelessWidget {
-  const HeaderRow({super.key});
+  final String? userName;
+  const HeaderRow({super.key, this.userName});
 
   @override
   Widget build(BuildContext context) {
@@ -912,7 +925,7 @@ class HeaderRow extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 13.0),
               child: Text(
-                "Xin chào Hào nhé",
+                "Xin chào ${userName ?? " bạn"}",
                 style: GoogleFonts.poppins(
                   color: Colors.black,
                   fontSize: 16,

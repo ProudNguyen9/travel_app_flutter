@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:travel_app/data/services/tour_service.dart';
 import '../models/booking.dart';
 
 class BookingService {
@@ -46,5 +47,35 @@ class BookingService {
       print("Update Booking Status Error: $e");
       return false;
     }
+  }
+  /// Lấy booking đã thanh toán + thông tin tour (startDate + TourFull)
+  Future<List<Map<String, dynamic>>> getPaidBookingsWithTour(int userId) async {
+    final rows = await _client
+        .from('bookings')
+        .select()
+        .eq('user_id', userId)
+        .eq('status', 'DA_THANH_TOAN');
+
+    if (rows.isEmpty) return [];
+
+    List<Map<String, dynamic>> result = [];
+
+    for (final row in rows) {
+      final int tourId = row['tour_id'];
+      final DateTime startDate = DateTime.parse(row['start_date']);
+      final DateTime endDate = DateTime.parse(row['end_date']);
+      // Lấy thông tin tour
+      final tour = await TourService.instance.getTourFullById(tourId);
+
+      if (tour != null) {
+        result.add({
+          "startDate": startDate,
+          "endDate" : endDate,
+          "tour": tour, // TourFull
+        });
+      }
+    }
+
+    return result;
   }
 }

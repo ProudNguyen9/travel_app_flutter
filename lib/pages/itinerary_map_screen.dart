@@ -1,18 +1,33 @@
+// lib/screens/itinerary_map_screen.dart
+
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_animations/flutter_map_animations.dart';
 import 'package:flutter_map_marker_popup/flutter_map_marker_popup.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:flutter_map_animations/flutter_map_animations.dart';
 import 'package:gap/gap.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:travel_app/data/services/activity_service.dart';
+import 'package:travel_app/data/services/tour_location_service.dart';
+import 'package:travel_app/data/models/map_location.dart';
 import 'package:travel_app/widget/location_card.dart';
-import '../widget/widget.dart';
+import 'package:travel_app/widget/tour_bottom_sheet.dart';
 
 class ItineraryMapScreen extends StatefulWidget {
-  const ItineraryMapScreen({super.key});
+  final int tourId;
+  final DateTime startDate;
+  final DateTime endDate;
+
+  const ItineraryMapScreen({
+    super.key,
+    required this.tourId,
+    required this.startDate,
+    required this.endDate,
+  });
 
   @override
   State<ItineraryMapScreen> createState() => _ItineraryMapScreenState();
@@ -22,40 +37,69 @@ class _ItineraryMapScreenState extends State<ItineraryMapScreen>
     with TickerProviderStateMixin {
   late final AnimatedMapController _animatedMapController;
   final PopupController _popupController = PopupController();
+
   Timer? _timer;
+
   int _segmentIndex = 0;
   int _stepIndex = 0;
 
-  // Ngày bắt đầu hành trình (có thể thay bằng ngày từ API)
-  final DateTime _startDate = DateTime(2025, 11, 6);
-
-  final List<LatLng> routePoints = [
-    const LatLng(10.7945, 106.7218), // Landmark 81
-    const LatLng(10.7801, 106.6997), // Bưu điện TP
-    const LatLng(10.7733, 106.7040), // Nguyễn Huệ
-    const LatLng(10.7725, 106.6981), // Chợ Bến Thành
-  ];
-
+  List<LatLng> routePoints = [];
   final List<LatLng> _animatedPoints = [];
+  List<MapLocation> _locations = [];
+
+  bool _mapReady = false;
+  bool _dataReady = false;
 
   @override
   void initState() {
     super.initState();
     _animatedMapController = AnimatedMapController(vsync: this);
-    _animatedPoints.add(routePoints.first);
+    _loadLocations();
+  }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fitAllPoints();
-      Future.delayed(const Duration(seconds: 4), _startSmoothAnimation);
-    });
+  Future<void> _loadLocations() async {
+    try {
+      final client = Supabase.instance.client;
+      final service = TourLocationService(client);
+
+      final locs = await service.getLocationsByTourId(widget.tourId);
+
+      if (!mounted) return;
+
+      setState(() {
+        _locations = locs;
+        routePoints = locs.map((e) => LatLng(e.latitude, e.longitude)).toList();
+
+        _animatedPoints.clear();
+        if (routePoints.isNotEmpty) {
+          _animatedPoints.add(routePoints.first);
+        }
+      });
+
+      _dataReady = true;
+      _tryStartAnimation();
+    } catch (e) {
+      debugPrint("Load location error: $e");
+    }
+  }
+
+  void _tryStartAnimation() {
+    if (_mapReady && _dataReady && routePoints.isNotEmpty) {
+      Future.delayed(const Duration(milliseconds: 200), () {
+        _fitAllPoints();
+        _startSmoothAnimation();
+      });
+    }
   }
 
   void _fitAllPoints() {
     if (routePoints.isEmpty) return;
+
     final bounds = LatLngBounds(routePoints.first, routePoints.first);
     for (final p in routePoints) {
       bounds.extend(p);
     }
+
     _animatedMapController.mapController.fitCamera(
       CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(60)),
     );
@@ -67,32 +111,18 @@ class _ItineraryMapScreenState extends State<ItineraryMapScreen>
 
     _timer = Timer.periodic(stepDuration, (timer) {
       if (_segmentIndex >= routePoints.length - 1) {
-        final last = routePoints.last;
-        final prev = routePoints[routePoints.length - 2];
-        final dx = last.longitude - prev.longitude;
-        final dy = last.latitude - prev.latitude;
-        final len = sqrt(dx * dx + dy * dy);
-        if (len == 0) {
-          timer.cancel();
-          return;
-        }
-        const extraDist = 0.0019;
-        final overshoot = LatLng(
-          last.latitude + dy / len * extraDist,
-          last.longitude + dx / len * extraDist,
-        );
-        setState(() => _animatedPoints.add(overshoot));
         timer.cancel();
         return;
       }
 
       final start = routePoints[_segmentIndex];
       final end = routePoints[_segmentIndex + 1];
+
       final t = _stepIndex / stepsPerSegment;
       final lat = start.latitude + (end.latitude - start.latitude) * t;
       final lng = start.longitude + (end.longitude - start.longitude) * t;
-      final next = LatLng(lat, lng);
-      setState(() => _animatedPoints.add(next));
+
+      setState(() => _animatedPoints.add(LatLng(lat, lng)));
 
       _stepIndex++;
       if (_stepIndex > stepsPerSegment) {
@@ -108,20 +138,15 @@ class _ItineraryMapScreenState extends State<ItineraryMapScreen>
     super.dispose();
   }
 
-  /// Trả về map chứa "day" (Ngày X) và "date" (dd/MM/yyyy)
-  Map<String, String> _vnDayLabel(int dayIndex) {
-    final d = _startDate.add(Duration(days: dayIndex));
-    final f = DateFormat('dd/MM/yyyy', 'vi_VN');
-    return {
-      'day': 'Ngày ${dayIndex + 1}',
-      'date': f.format(d),
-    };
-  }
+  // =====================================================================
+  // UI
+  // =====================================================================
 
   @override
   Widget build(BuildContext context) {
-    final currentCarPosition =
-        _animatedPoints.isNotEmpty ? _animatedPoints.last : routePoints.first;
+    final currentCarPosition = _animatedPoints.isNotEmpty
+        ? _animatedPoints.last
+        : (routePoints.isNotEmpty ? routePoints.first : const LatLng(0, 0));
 
     return Scaffold(
       body: Stack(
@@ -129,46 +154,48 @@ class _ItineraryMapScreenState extends State<ItineraryMapScreen>
           FlutterMap(
             mapController: _animatedMapController.mapController,
             options: MapOptions(
-              initialCenter: routePoints.first,
+              initialCenter: routePoints.isNotEmpty
+                  ? routePoints.first
+                  : const LatLng(0, 0),
               initialZoom: 14,
               onTap: (_, __) => _popupController.hideAllPopups(),
+              onMapReady: () {
+                _mapReady = true;
+                _tryStartAnimation();
+              },
             ),
             children: [
               TileLayer(
                 urlTemplate:
-                    'https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=QP5NRxkCF6PG3PvLdYl2',
-                userAgentPackageName: 'com.example.app',
+                    "https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=QP5NRxkCF6PG3PvLdYl2",
+                userAgentPackageName: "com.travel.app",
               ),
 
-              // Đường đi
-              PolylineLayer(
-                polylines: [
-                  Polyline(
-                    points: _animatedPoints,
-                    strokeWidth: 5,
-                    color: const Color(0xFF24BAEC),
-                  ),
-                ],
-              ),
+              // LINE ANIMATION
+              if (_animatedPoints.isNotEmpty)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: _animatedPoints,
+                      strokeWidth: 5,
+                      color: const Color(0xFF24BAEC),
+                    ),
+                  ],
+                ),
 
-              // Marker xe di chuyển
+              // CAR MARKER
               MarkerLayer(
                 markers: [
                   Marker(
                     point: currentCarPosition,
                     width: 60,
                     height: 60,
-                    child: Image.asset(
-                      'assets/icons/car.png',
-                      width: 50,
-                      height: 50,
-                    ),
+                    child: Image.asset("assets/icons/car.png"),
                   ),
                 ],
               ),
 
-              // Popup marker
-              // ignore: deprecated_member_use
+              // LOCATION POPUP
               PopupMarkerLayerWidget(
                 options: PopupMarkerLayerOptions(
                   popupController: _popupController,
@@ -178,33 +205,47 @@ class _ItineraryMapScreenState extends State<ItineraryMapScreen>
                           point: p,
                           width: 70,
                           height: 70,
-                          child: Image.asset(
-                            'assets/icons/marker.png',
-                            width: 70,
-                            height: 70,
-                            fit: BoxFit.contain,
-                          ),
+                          child: Image.asset("assets/icons/marker.png"),
                         ),
                       )
                       .toList(),
                   popupDisplayOptions: PopupDisplayOptions(
                     builder: (context, marker) {
                       final index = routePoints.indexOf(marker.point);
-                      final label = _vnDayLabel(index);
-                      final String dayText = label['day']!;
-                      final String dateText = label['date']!;
+                      final loc = _locations[index];
 
                       return LocationCard(
-                        imagePath: 'assets/images/mountain2.png',
-                        title: 'Điểm dừng ${index + 1}',
-                        day: dayText, // "Ngày X"
-                        date: dateText, // "dd/MM/yyyy"
-                        onTap: () {
+                        imagePath:
+                            loc.imageUrl ?? 'assets/images/mountain2.png',
+                        title: loc.name,
+                        day: "Địa điểm ${index + 1}",
+                        date: "",
+                        onTap: () async {
+                          final service =
+                              ActivityService(Supabase.instance.client);
+
+                          final acts = await service.getByTourId(widget.tourId);
+
+                          // Convert → ActivityItem
+                          final items = acts
+                              .map((a) => ActivityItem(
+                                    originalDate: a.startTime!,
+                                    time: DateFormat("HH:mm")
+                                        .format(a.startTime!),
+                                    title: a.name,
+                                    subtitle: a.activityType ?? "",
+                                  ))
+                              .toList();
+
                           showModalBottomSheet(
                             context: context,
                             isScrollControlled: true,
                             backgroundColor: Colors.transparent,
-                            builder: (context) => const BottomSheetContent(),
+                            builder: (_) => BottomSheetContent(
+                              startDate: widget.startDate,
+                              endDate: widget.endDate,
+                              activities: items,
+                            ),
                           );
                         },
                       );
@@ -215,7 +256,7 @@ class _ItineraryMapScreenState extends State<ItineraryMapScreen>
             ],
           ),
 
-          // AppBar tuỳ chỉnh
+          // APPBAR
           Align(
             alignment: Alignment.topCenter,
             child: Padding(
@@ -229,18 +270,16 @@ class _ItineraryMapScreenState extends State<ItineraryMapScreen>
                   const Gap(60),
                   Text(
                     'Lịch trình Tour',
-                    textAlign: TextAlign.center,
                     style: GoogleFonts.lato(
-                      fontSize: 20,
-                      height: 22 / 20,
                       fontWeight: FontWeight.w600,
+                      fontSize: 20,
                       color: const Color(0xFF1B1E28),
                     ),
-                  ),
+                  )
                 ],
               ),
             ),
-          ),
+          )
         ],
       ),
     );

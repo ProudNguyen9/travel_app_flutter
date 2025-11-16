@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'package:travel_app/authenticaion/auth_provider.dart';
 import 'package:travel_app/pages/home_screen.dart';
-import 'package:travel_app/pages/screen.dart'; // SplashScreen, LoginScreen, SignUpScreen, ResetPasswordScreen
-
+import 'package:travel_app/pages/screen.dart'; 
 // ====== Navigator key & routing guard ======
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 bool _isRouting = false;
@@ -22,7 +22,9 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   await initializeDateFormatting('vi_VN', null);
-
+// Publishable key (Test Mode)
+  Stripe.publishableKey = "pk_test_51STjqjJgtg1GbjTThFaNnlOcFFiSgHgdzGnPusCfrlin0ZcyHwejs6LBplGFy8sFCZ8Q8AD7GTs4JizketnJRzZ800P4dN8sgy";
+  await Stripe.instance.applySettings();
   await Supabase.initialize(
     url: 'https://yszeuemcqrydkfbhvdhj.supabase.co',
     anonKey:

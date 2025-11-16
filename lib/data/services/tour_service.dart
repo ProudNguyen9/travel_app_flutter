@@ -112,6 +112,36 @@ class TourService {
 
     return durations;
   }
+ /// 🟦 Lấy chi tiết tour theo tour_id
+  Future<TourFull?> getTourFullById(int tourId) async {
+    // 1️⃣ Nếu đã cache → tìm trong cache luôn
+    if (_cachedTours != null) {
+      try {
+        return _cachedTours!.firstWhere((t) => t.tourId == tourId);
+      } catch (_) {}
+    }
+
+    // 2️⃣ Gọi Supabase để lấy thông tin cơ bản
+    final rows = await _db
+        .from(_view)
+        .select()
+        .eq('tour_id', tourId)
+        .maybeSingle();
+
+    if (rows == null) return null;
+
+    final tour = TourFull.fromMap(rows);
+
+    // 3️⃣ Lấy ảnh
+    try {
+      final images = await _fetchImagesByTourId(tourId);
+      tour.images = images;
+    } catch (_) {
+      tour.images = [];
+    }
+
+    return tour;
+  }
 
   ///  Reset cache (ví dụ khi logout)
   void clearCache() {
