@@ -86,6 +86,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       HeaderRow(
+                        url: user?.profileImage,
                         userName: user?.name,
                       ),
                       const Gap(10),
@@ -902,7 +903,8 @@ class CardItemForYou extends StatelessWidget {
 // appbar
 class HeaderRow extends StatelessWidget {
   final String? userName;
-  const HeaderRow({super.key, this.userName});
+  final String? url;
+  const HeaderRow({super.key, this.userName, this.url});
 
   @override
   Widget build(BuildContext context) {
@@ -914,12 +916,28 @@ class HeaderRow extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(100),
-              child: Image.asset(
-                'assets/images/main.png',
-                width: 40,
-                height: 40,
-                fit: BoxFit.cover,
-              ),
+              child: (url == null || url == "")
+                  ? Image.asset(
+                      'assets/images/splash1.png', // ảnh fallback
+                      width: 40,
+                      height: 40,
+                      fit: BoxFit.cover,
+                    )
+                  : Image.network(
+                      url!,
+                      width: 40,
+                      height: 40,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        // Nếu bị lỗi khi tải ảnh online → dùng asset
+                        return Image.asset(
+                          'assets/images/default.png',
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.cover,
+                        );
+                      },
+                    ),
             ),
             const SizedBox(width: 8),
             Padding(

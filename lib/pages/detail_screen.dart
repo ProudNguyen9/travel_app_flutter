@@ -388,11 +388,13 @@ class _DetailScreenState extends State<DetailScreen> {
                             : () async {
                                 final client = Supabase.instance.client;
                                 final authUser = client.auth.currentUser;
+
                                 if (authUser == null) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                        content: Text(
-                                            'Bạn cần đăng nhập để thêm yêu thích.')),
+                                      content: Text(
+                                          'Bạn cần đăng nhập để thêm yêu thích.'),
+                                    ),
                                   );
                                   return;
                                 }
@@ -401,17 +403,37 @@ class _DetailScreenState extends State<DetailScreen> {
                                   await FavoriteTourService.instance
                                       .addFavoriteByAuth(
                                           authUser.id, _tour.tourId);
+
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                        content: Text(
-                                            'Đã thêm "${_tour.name}" vào yêu thích ❤️')),
+                                      content: Text(
+                                        'Đã thêm "${_tour.name}" vào yêu thích ❤️',
+                                      ),
+                                    ),
                                   );
                                 } catch (e) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
+                                  final error = e.toString();
+
+                                  if (error.contains("duplicate") ||
+                                      error.contains("unique") ||
+                                      error.contains("Duplicate")) {
+                                    // ⭐ LỖI DUPLICATE → đã tồn tại trong danh sách yêu thích
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Tour đã có trong danh sách yêu thích rồi ❤️',
+                                        ),
+                                      ),
+                                    );
+                                  } else {
+                                    // ❌ LỖI KHÁC
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
                                         content:
-                                            Text('Lỗi khi thêm yêu thích: $e')),
-                                  );
+                                            Text('Lỗi khi thêm yêu thích: $e'),
+                                      ),
+                                    );
+                                  }
                                 }
                               },
                         style: OutlinedButton.styleFrom(
@@ -430,7 +452,7 @@ class _DetailScreenState extends State<DetailScreen> {
                           ),
                         ),
                       ),
-                    )
+                    ),
                   ],
                 ),
               ),

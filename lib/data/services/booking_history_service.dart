@@ -58,15 +58,9 @@ class BookingHistoryService {
             )
           ''').eq('user_id', userId).order('start_date', ascending: false);
 
-      if (data is! List) {
-        print(
-            '[BookingHistory] ⚠️ data không phải List, type=${data.runtimeType}');
-        return [];
-      }
-
       final allItems = data
           .map(
-            (row) => BookingHistoryItem.fromJson(row as Map<String, dynamic>),
+            (row) => BookingHistoryItem.fromJson(row),
           )
           .toList();
 
@@ -96,8 +90,7 @@ class BookingHistoryService {
           // Sắp tới: ngày còn ở tương lai + trạng thái chưa/đã thanh toán
           filtered = allItems.where((b) {
             final s = b.status;
-            return isFuture(b) &&
-                (s == 'CHUA_THANH_TOAN' || s == 'DA_THANH_TOAN');
+            return isFuture(b) && (s == 'DA_THANH_TOAN');
           }).toList();
           break;
 
@@ -116,7 +109,7 @@ class BookingHistoryService {
             return s == 'DA_HUY' ||
                 s == 'HUY' ||
                 s == 'DA_HUY_TOUR' ||
-                s == 'DA_HUY_BOOKING';
+                s == 'CHUA_THANH_TOAN';
           }).toList();
           break;
 

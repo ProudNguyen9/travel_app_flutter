@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:travel_app/authenticaion/auth_provider.dart';
+import 'package:travel_app/data/services/email_check_service.dart';
 import 'package:travel_app/pages/Login/login_screen.dart';
 import 'package:travel_app/pages/home_screen.dart';
 import 'package:travel_app/widget/icon.dart';
@@ -34,69 +35,73 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   Future<void> _signUp() async {
-    // validate form trước
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
     setState(() => loading = true);
 
-    try {
-      final fullName = nameCtrl.text.trim();
-      final email = emailCtrl.text.trim();
-      final password = passCtrl.text.trim();
+    final email = emailCtrl.text.trim();
+    final fullName = nameCtrl.text.trim();
+    final password = passCtrl.text.trim();
 
+    // ⭐ KIỂM TRA EMAIL TRƯỚC KHI TẠO TÀI KHOẢN
+    final exists = await EmailCheckService.exists(email);
+    if (exists) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Email đã tồn tại. Vui lòng dùng email khác."),
+          backgroundColor: Colors.red,
+        ),
+      );
+      setState(() => loading = false);
+      return; // ⛔ DỪNG TẠI ĐÂY — KHÔNG SIGN UP!!
+    }
+
+    try {
+      // Không tồn tại → cho đăng ký
       final res = await Supabase.instance.client.auth.signUp(
         email: email,
         password: password,
         emailRedirectTo: 'travelapp://login-callback',
-        data: {
-          // sẽ lưu vào user.userMetadata['full_name']
-          'full_name': fullName,
-        },
+        data: {'full_name': fullName},
       );
 
-      // Nếu project không bắt confirm email thì user có thể có session luôn
       final user = res.user;
 
       if (user != null) {
-        // Đảm bảo metadata name cũng được update (phòng khi sau này bạn đổi rule)
         await Supabase.instance.client.auth.updateUser(
-          UserAttributes(
-            data: {
-              'full_name': fullName,
-            },
-          ),
+          UserAttributes(data: {'full_name': fullName}),
         );
 
         if (!mounted) return;
+
+        // Thông báo đăng ký thành công
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
-                "Đăng ký thành công! Vui lòng kiểm tra email để xác nhận."),
+            content: Text("Đăng ký thành công! Kiểm tra email để kích hoạt."),
             backgroundColor: Colors.green,
           ),
+        );
+
+        // Điều hướng bằng push (không dùng tên route)
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) =>
+                  const LoginScreen()), // đổi LoginScreen nếu tên khác
         );
       }
     } on AuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Lỗi: ${e.message}"),
-          backgroundColor: Colors.red,
-        ),
+            content: Text("Lỗi: ${e.message}"), backgroundColor: Colors.red),
       );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Có lỗi xảy ra: $e"),
-          backgroundColor: Colors.red,
-        ),
-      );
+    } finally {
+      if (mounted) setState(() => loading = false);
     }
-
-    if (mounted) setState(() => loading = false);
   }
 
   @override

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import 'package:travel_app/data/services/booking_history_service.dart';
+import 'package:travel_app/pages/itinerary_map_screen.dart';
 import '../data/models/booking_history_item.dart';
 
 class BookingsHistoryScreen extends StatefulWidget {
@@ -119,7 +120,7 @@ class _BookingsHistoryScreenState extends State<BookingsHistoryScreen> {
                       tabs: const [
                         Tab(text: 'Sắp tới'),
                         Tab(text: 'Hoàn tất'),
-                        Tab(text: 'Đã hủy'),
+                        Tab(text: 'Chưa TT '),
                       ],
                     ),
                   ),
@@ -241,12 +242,18 @@ class _BookingsHistoryScreenState extends State<BookingsHistoryScreen> {
           time: timeText,
           price: priceText,
           guests: guestsText,
+          tourid: item.tourId,
+          startday: item.startDate!,
+          endday: item.endDate!,
         );
       },
     );
   }
 
   Widget _buildBookingCard({
+    required int tourid,
+    required DateTime startday,
+    required DateTime endday,
     required double scale,
     required String image,
     required String title,
@@ -479,7 +486,16 @@ class _BookingsHistoryScreenState extends State<BookingsHistoryScreen> {
                     SizedBox(width: 6 * scale),
                     ElevatedButton(
                       onPressed: () {
-                        // TODO: mở chi tiết booking / contract / invoice ...
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ItineraryMapScreen(
+                              tourId: tourid,
+                              startDate: startday,
+                              endDate: endday,
+                            ),
+                          ),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: accentBlue,
@@ -493,7 +509,7 @@ class _BookingsHistoryScreenState extends State<BookingsHistoryScreen> {
                         elevation: 0,
                       ),
                       child: Text(
-                        "Xem",
+                        "Lịch trình ",
                         style: GoogleFonts.lato(
                           fontSize: 16 * scale,
                           fontWeight: FontWeight.w600,

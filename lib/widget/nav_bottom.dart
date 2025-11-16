@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:gap/gap.dart';
+import 'package:travel_app/pages/ChatAi_Screen.dart';
 import 'package:travel_app/pages/home_screen.dart'; // ✅ HomeScreen là nội dung tab 0
 import 'package:travel_app/pages/screen.dart'; // SheduleScreen, ProfileScreen...
 
@@ -28,7 +29,7 @@ class _SimpleBottomScaffoldState extends State<SimpleBottomScaffold> {
   void _openAI() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => const _AiAssistantPage(),
+        builder: (_) => const ChatAiScreen(),
         fullscreenDialog: true,
       ),
     );

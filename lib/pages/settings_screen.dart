@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:travel_app/pages/screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -81,7 +83,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
           Center(
             child: TextButton(
-              onPressed: () {},
+              onPressed: () async {
+                final supabase = Supabase.instance.client;
+
+                await supabase.auth.signOut();
+
+                // Điều hướng về màn hình Login (replace để ko quay lại được)
+                if (context.mounted) {
+                  Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const LoginScreen()));
+                }
+              },
               child: Text(
                 'Đăng xuất',
                 style: GoogleFonts.poppins(

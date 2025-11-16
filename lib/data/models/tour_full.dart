@@ -16,7 +16,8 @@ class TourFull {
 
   // ===== Discount fields (from vw_tours_full) =====
   final int? bestDiscountId; // bv.discount_id
-  final int? bestDiscountPeople; // bv.required_people (NULL/1 = 1 người; >=2 = nhóm)
+  final int?
+      bestDiscountPeople; // bv.required_people (NULL/1 = 1 người; >=2 = nhóm)
   final String? bestDiscountType; // 'percent' | 'fixed'
   final double? bestDiscountValue; // % hoặc số tiền
   final double? bestDiscountCap; // trần (nếu percent)
@@ -162,7 +163,62 @@ class TourFull {
       bestDiscountType: bestDiscountType ?? this.bestDiscountType,
       bestDiscountValue: bestDiscountValue ?? this.bestDiscountValue,
       bestDiscountCap: bestDiscountCap ?? this.bestDiscountCap,
-      bestDiscountEarlyDays: bestDiscountEarlyDays ?? this.bestDiscountEarlyDays,
+      bestDiscountEarlyDays:
+          bestDiscountEarlyDays ?? this.bestDiscountEarlyDays,
+    );
+  }
+
+  factory TourFull.fromJson(Map<String, dynamic> j) {
+    double? toDouble(dynamic v) {
+      if (v == null) return null;
+      if (v is num) return v.toDouble();
+      if (v is String) return double.tryParse(v);
+      return null;
+    }
+
+    int? toInt(dynamic v) {
+      if (v == null) return null;
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+      if (v is String) return int.tryParse(v);
+      return null;
+    }
+
+    DateTime? toDate(dynamic v) {
+      if (v == null) return null;
+      return DateTime.tryParse(v.toString());
+    }
+
+    // images: có thể là List<String> hoặc List<dynamic>
+    List<String>? parseImages(dynamic raw) {
+      if (raw == null) return null;
+      if (raw is List) {
+        return raw.map((e) => e.toString()).toList();
+      }
+      return null;
+    }
+
+    return TourFull(
+      tourId: (j['tour_id'] as num).toInt(),
+      name: j['name'] ?? '',
+      description: j['description'],
+      basePriceAdult: toDouble(j['base_price_adult']),
+      basePriceChild: toDouble(j['base_price_child']),
+      durationDays: toDouble(j['duration_days']),
+      maxParticipants: toInt(j['max_participants']),
+      tourTypeId: toInt(j['tour_type_id']),
+      imageUrl: j['image_url'],
+      images: parseImages(j['images']),
+      createdAt: toDate(j['created_at']),
+      updatedAt: toDate(j['updated_at']),
+      tourTypeName: j['tour_type_name'],
+      tourTypeCode: j['tour_type_code'],
+      bestDiscountId: toInt(j['best_discount_id']),
+      bestDiscountPeople: toInt(j['best_discount_people']),
+      bestDiscountType: j['best_discount_type'],
+      bestDiscountValue: toDouble(j['best_discount_value']),
+      bestDiscountCap: toDouble(j['best_discount_cap']),
+      bestDiscountEarlyDays: toInt(j['best_discount_early_days']),
     );
   }
 

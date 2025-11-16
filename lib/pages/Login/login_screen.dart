@@ -26,6 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
   // Email login
   Future<void> _signInWithEmail() async {
     setState(() => loading = true);
+
     try {
       final res = await supabase.auth.signInWithPassword(
         email: emailCtrl.text.trim(),
@@ -39,15 +40,32 @@ class _LoginScreenState extends State<LoginScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.push(
+
+        Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const SimpleBottomScaffold()),
+          MaterialPageRoute(
+            builder: (_) => const SimpleBottomScaffold(),
+          ),
         );
       }
     } on AuthException catch (e) {
+      final msg = e.message.toLowerCase();
+
+      String error = "Đã xảy ra lỗi. Vui lòng thử lại.";
+
+      if (msg.contains("invalid login credentials")) {
+        error = "Email hoặc mật khẩu không đúng";
+      } else if (msg.contains("email not confirmed")) {
+        error = "Email chưa được xác thực. Vui lòng kiểm tra hộp thư đến.";
+      } else if (msg.contains("user not found")) {
+        error = "Tài khoản không tồn tại";
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text("Lỗi: ${e.message}"), backgroundColor: Colors.red),
+          content: Text(error),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       setState(() => loading = false);
@@ -78,8 +96,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 30),
-                TextField(
+                TextFormField(
                   controller: emailCtrl,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   decoration: InputDecoration(
                     hintText: "Email",
                     filled: true,
@@ -88,12 +107,32 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(24),
                       borderSide: BorderSide.none,
                     ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: const BorderSide(color: Colors.red, width: 1),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide:
+                          const BorderSide(color: Colors.red, width: 1.2),
+                    ),
                   ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return "Vui lòng nhập email";
+                    }
+                    final emailRegex = RegExp(r'^[\w\.\-]+@[\w\.\-]+\.\w+$');
+                    if (!emailRegex.hasMatch(value.trim())) {
+                      return "Email không hợp lệ";
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 16),
-                TextField(
+                TextFormField(
                   controller: passCtrl,
                   obscureText: obscureText,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   decoration: InputDecoration(
                     hintText: "Mật khẩu",
                     suffixIcon: IconButton(
@@ -109,7 +148,31 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(24),
                       borderSide: BorderSide.none,
                     ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: const BorderSide(color: Colors.red, width: 1),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide:
+                          const BorderSide(color: Colors.red, width: 1.2),
+                    ),
                   ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return "Vui lòng nhập mật khẩu";
+                    }
+
+                    // Regex kiểm tra độ mạnh của mật khẩu
+                    final passwordRegex = RegExp(
+                      r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._-])[A-Za-z\d@$!%*?&._-]{8,}$',
+                    );
+
+                    if (!passwordRegex.hasMatch(value)) {
+                      return "Mật khẩu phải gồm:\n- Chữ hoa (A–Z)\n- Chữ thường (a–z)\n- Số (0–9)\n- Ký tự đặc biệt (@, #, !, ...)\n- Tối thiểu 8 ký tự";
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(
                   height: 10,
@@ -224,7 +287,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => const SimpleBottomScaffold()),
+                                  builder: (context) =>
+                                      const SimpleBottomScaffold()),
                             );
                           }
                         } catch (e) {
@@ -250,7 +314,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (context) => const SimpleBottomScaffold()));
+                                    builder: (context) =>
+                                        const SimpleBottomScaffold()));
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
@@ -279,7 +344,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => const SimpleBottomScaffold()),
+                                  builder: (context) =>
+                                      const SimpleBottomScaffold()),
                             );
                           }
                         } catch (e) {

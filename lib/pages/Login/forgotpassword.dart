@@ -18,12 +18,28 @@ class ForgotpasswordScreen extends StatefulWidget {
 
 class _ForgotpasswordScreenState extends State<ForgotpasswordScreen> {
   final emailCtrl = TextEditingController();
-  bool obscureText = true;
+  String? emailError; // ❗ Lỗi email realtime
   bool loading = false;
 
   final supabase = Supabase.instance.client;
-  // Email forgot
+
+  // VALIDATE EMAIL
+  void validateEmail(String value) {
+    if (value.isEmpty) {
+      setState(() => emailError = "Email không được để trống");
+    } else if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+      setState(() => emailError = "Email không hợp lệ");
+    } else {
+      setState(() => emailError = null);
+    }
+  }
+
+  // GỬI EMAIL QUÊN MẬT KHẨU
   Future<void> _SendEmailForgot() async {
+    // Check email trước khi gửi
+    validateEmail(emailCtrl.text.trim());
+    if (emailError != null) return;
+
     setState(() => loading = true);
 
     try {
@@ -76,32 +92,33 @@ class _ForgotpasswordScreenState extends State<ForgotpasswordScreen> {
                   ),
                 ),
                 const SizedBox(height: 40),
+
+                // EMAIL FIELD + VALIDATE
                 TextField(
                   controller: emailCtrl,
+                  onChanged: validateEmail,
                   decoration: InputDecoration(
                     hintText: "Nhập Email của bạn ....",
                     filled: true,
                     fillColor: const Color(0xFFF7F7F9),
+                    errorText: emailError,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(24),
                       borderSide: BorderSide.none,
                     ),
                   ),
                 ),
-                const SizedBox(
-                  height: 30,
-                ),
+
+                const SizedBox(height: 30),
+
                 Row(
                   children: [
-                    // Nút BACK dạng viền
                     Expanded(
                       flex: 2,
                       child: SizedBox(
                         height: 56,
                         child: OutlinedButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                          },
+                          onPressed: () => Navigator.pop(context),
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(
                                 color: Color(0xFF24BAEC), width: 2),
@@ -122,13 +139,15 @@ class _ForgotpasswordScreenState extends State<ForgotpasswordScreen> {
 
                     const SizedBox(width: 12),
 
-                    // Nút QUÊN MẬT KHẨU (giữ nguyên)
+                    // NÚT QUÊN MẬT KHẨU
                     Expanded(
                       flex: 3,
                       child: SizedBox(
                         height: 56,
                         child: ElevatedButton(
-                          onPressed: loading ? null : _SendEmailForgot,
+                          onPressed: loading || emailError != null
+                              ? null
+                              : _SendEmailForgot,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF24BAEC),
                             shape: RoundedRectangleBorder(
@@ -148,15 +167,20 @@ class _ForgotpasswordScreenState extends State<ForgotpasswordScreen> {
                     ),
                   ],
                 ),
+
                 const SizedBox(height: 24),
                 const Gap(10),
+
                 Image.asset(
                   "assets/images/imgforgot.png",
                   width: 250,
                   height: 300,
                   fit: BoxFit.contain,
                 ),
+
                 const Gap(10),
+
+                /// SOCIAL LOGIN (giữ nguyên)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -171,12 +195,10 @@ class _ForgotpasswordScreenState extends State<ForgotpasswordScreen> {
                                 LaunchMode.externalApplication,
                           );
 
-                          //  get secsion
                           final session =
                               Supabase.instance.client.auth.currentSession;
 
                           if (session != null) {
-                            //  go to page welcaom
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
@@ -184,7 +206,6 @@ class _ForgotpasswordScreenState extends State<ForgotpasswordScreen> {
                             );
                           }
                         } catch (e) {
-                          debugPrint("Facebook login error: $e");
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                                 content: Text("Lỗi đăng nhập Facebook: $e")),
@@ -198,11 +219,9 @@ class _ForgotpasswordScreenState extends State<ForgotpasswordScreen> {
                         ontap: () async {
                           await context.read<AuthProvider>().googleSignIn();
 
-                          // Nếu muốn kiểm tra login thành công
                           final session =
                               Supabase.instance.client.auth.currentSession;
                           if (session != null) {
-                            // Chuyển sang trang khác
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -226,12 +245,10 @@ class _ForgotpasswordScreenState extends State<ForgotpasswordScreen> {
                                 LaunchMode.externalApplication,
                           );
 
-                          // Lấy session
                           final session =
                               Supabase.instance.client.auth.currentSession;
 
                           if (session != null) {
-                            // Điều hướng sang màn hình Welcome
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
@@ -239,7 +256,6 @@ class _ForgotpasswordScreenState extends State<ForgotpasswordScreen> {
                             );
                           }
                         } catch (e) {
-                          debugPrint("Twitter login error: $e");
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                                 content: Text("Lỗi đăng nhập Twitter: $e")),
