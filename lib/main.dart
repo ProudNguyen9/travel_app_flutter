@@ -7,14 +7,19 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'package:travel_app/authenticaion/auth_provider.dart';
 import 'package:travel_app/pages/home_screen.dart';
-import 'package:travel_app/pages/screen.dart'; 
-// ====== Navigator key & routing guard ======
+import 'package:travel_app/pages/screen.dart';
+import 'package:travel_app/widget/nav_bottom.dart'; // 👈 thêm file này nếu chưa
+
+// ====== Global Navigator ======
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 bool _isRouting = false;
+
 void _go(String route) {
-  if (_isRouting) return; // chặn đúp
+  if (_isRouting) return;
   _isRouting = true;
+
   navigatorKey.currentState?.pushNamedAndRemoveUntil(route, (r) => false);
+
   Future.delayed(const Duration(milliseconds: 300), () => _isRouting = false);
 }
 
@@ -22,29 +27,43 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   await initializeDateFormatting('vi_VN', null);
-// Publishable key (Test Mode)
-  Stripe.publishableKey = "pk_test_51STjqjJgtg1GbjTThFaNnlOcFFiSgHgdzGnPusCfrlin0ZcyHwejs6LBplGFy8sFCZ8Q8AD7GTs4JizketnJRzZ800P4dN8sgy";
+
+  // ====== Stripe ======
+  Stripe.publishableKey =
+      "pk_test_51STjqjJgtg1GbjTThFaNnlOcFFiSgHgdzGnPusCfrlin0ZcyHwejs6LBplGFy8sFCZ8Q8AD7GTs4JizketnJRzZ800P4dN8sgy";
   await Stripe.instance.applySettings();
+
+  // ====== Supabase ======
   await Supabase.initialize(
     url: 'https://yszeuemcqrydkfbhvdhj.supabase.co',
     anonKey:
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzemV1ZW1jcXJ5ZGtmYmh2ZGhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyMDIwMTksImV4cCI6MjA3NDc3ODAxOX0.2b1l53MlZoC600ApWemncNNgFnomwaRTSYdWBYqrweo',
   );
 
-  // ====== Auth event listener (an toàn, không điều hướng sang /home ở đây) ======
+  // ====== AUTH LISTENER ======
   Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
     final event = data.event;
     final session = data.session;
 
-    // 1) User bấm link reset password từ email
+    // --- RESET PASSWORD ---
     if (event == AuthChangeEvent.passwordRecovery) {
       _go('/reset-password');
       return;
     }
 
-    // 2) Case "vừa xác thực email lần đầu" → signOut để buộc user đăng nhập lại
+    // --- SIGNED IN ---
     if (event == AuthChangeEvent.signedIn && session != null) {
       final user = session.user;
+      final provider =
+          user.appMetadata["provider"]; // email / google / facebook
+
+      // ——— OAUTH Login (Facebook / Google) → vào SimpleScaffold ———
+      if (provider != "email") {
+        _go('/simple');
+        return;
+      }
+
+      // ——— Email/password: xử lý verify lần đầu ———
       final isFirstTimeVerified = user.lastSignInAt == user.createdAt;
 
       if (isFirstTimeVerified) {
@@ -56,22 +75,27 @@ Future<void> main() async {
           ScaffoldMessenger.of(ctx).showSnackBar(
             const SnackBar(
               content:
-                  Text("🎉 Email đã xác thực thành công! Đăng nhập nào 💛"),
+                  Text("🎉 Email đã xác thực thành công! Đăng nhập lại nhé 💛"),
               backgroundColor: Colors.green,
             ),
           );
         }
+        return;
       }
 
-      // ❗ KHÔNG điều hướng sang /home tại đây để tránh trùng với Login/Splash
+      // Email login bình thường → vào SimpleScaffold
+      _go('/simple');
+      return;
     }
 
-    // 3) Khi signedOut → quay về Login
+    // --- SIGNED OUT ---
     if (event == AuthChangeEvent.signedOut) {
       _go('/login');
+      return;
     }
   });
 
+  // ====== RUN APP ======
   runApp(
     MultiProvider(
       providers: [
@@ -91,15 +115,13 @@ class MyApp extends StatelessWidget {
       navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'Travel App',
-
-      // 👉 Splash trước tiên (Splash của bạn đã có welcome kèm trong đó)
       initialRoute: '/splash',
-
       routes: {
         '/splash': (context) => const SplashScreen(),
         '/login': (context) => const LoginScreen(),
         '/signup': (context) => const SignUpScreen(),
         '/home': (context) => const HomeScreen(),
+        '/simple': (context) => const SimpleBottomScaffold(), // 👈 route mới
         '/reset-password': (context) => const ResetPasswordScreen(),
       },
     );

@@ -278,24 +278,26 @@ class _LoginScreenState extends State<LoginScreen> {
                                 LaunchMode.externalApplication,
                           );
 
-                          //  get secsion
                           final session =
                               Supabase.instance.client.auth.currentSession;
 
                           if (session != null) {
-                            //  go to page welcaom
+                            if (!mounted) return;
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) =>
-                                      const SimpleBottomScaffold()),
+                                builder: (context) =>
+                                    const SimpleBottomScaffold(),
+                              ),
                             );
                           }
                         } catch (e) {
                           debugPrint("Facebook login error: $e");
+                          if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                                content: Text("Lỗi đăng nhập Facebook: $e")),
+                              content: Text("Lỗi đăng nhập Facebook: $e"),
+                            ),
                           );
                         }
                       },

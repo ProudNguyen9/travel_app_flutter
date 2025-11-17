@@ -8,6 +8,7 @@ import 'package:travel_app/data/services/email_check_service.dart';
 import 'package:travel_app/pages/Login/login_screen.dart';
 import 'package:travel_app/pages/home_screen.dart';
 import 'package:travel_app/widget/icon.dart';
+import 'package:travel_app/widget/nav_bottom.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -344,7 +345,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const HomeScreen(),
+                                  builder: (context) =>
+                                      const SimpleBottomScaffold(),
                                 ),
                               );
                             }

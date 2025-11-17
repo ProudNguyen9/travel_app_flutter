@@ -90,7 +90,8 @@ class BookingHistoryService {
           // Sắp tới: ngày còn ở tương lai + trạng thái chưa/đã thanh toán
           filtered = allItems.where((b) {
             final s = b.status;
-            return isFuture(b) && (s == 'DA_THANH_TOAN');
+            return isFuture(b) &&
+                (s == 'DA_THANH_TOAN' || s == 'CHUA_THANH_TOAN');
           }).toList();
           break;
 
@@ -103,13 +104,11 @@ class BookingHistoryService {
           break;
 
         case 'canceled':
-          // Đã hủy: chuẩn bị sẵn
           filtered = allItems.where((b) {
             final s = b.status;
-            return s == 'DA_HUY' ||
-                s == 'HUY' ||
-                s == 'DA_HUY_TOUR' ||
-                s == 'CHUA_THANH_TOAN';
+            return s == 'HUY' ||
+                s == 'DA_HUY_CHUA_HOAN_TIEN' ||
+                s == 'DA_HUY_DA_HOAN_TIEN';
           }).toList();
           break;
 

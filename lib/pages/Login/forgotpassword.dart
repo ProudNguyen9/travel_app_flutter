@@ -202,7 +202,7 @@ class _ForgotpasswordScreenState extends State<ForgotpasswordScreen> {
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => const HomeScreen()),
+                                  builder: (context) =>  const SimpleBottomScaffold()),
                             );
                           }
                         } catch (e) {
